@@ -236,14 +236,10 @@ table {
   background: #fff;
 }
 
-/* 나만 보는 모드: 이 페이지 수정 버튼 */
-#me-tools .me-edit {
+/* 나만 보는 모드: 이 페이지 수정 버튼 (오늘의 색·글씨체와 같은 모양) */
+#me-tools a.me-edit {
   display: inline-block;
   text-decoration: none;
-  background: var(--site-accent);
-  color: #fff;
-  border: 1px solid var(--site-accent);
-  border-radius: 8px;
-  padding: 6px 12px;
-  margin-left: 6px;
+  font-size: 14px;
+  line-height: normal;
 }

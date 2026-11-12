@@ -205,7 +205,7 @@ window.Quarto = {
 
 <div class="quarto-listing quarto-listing-container-default" id="listing-listing">
 <div class="list quarto-listing-default">
-<div class="quarto-post image-right" data-index="0" data-listing-date-sort="1793577600000" data-listing-file-modified-sort="1794494069209" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="1" data-listing-word-count-sort="34">
+<div class="quarto-post image-right" data-index="0" data-listing-date-sort="1793577600000" data-listing-file-modified-sort="1794494556781" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="1" data-listing-word-count-sort="34">
 <div class="body">
 <h3 class="no-anchor listing-title">
 <a href="./notes/prejudice-reduction.html" class="no-external-icon">Prejudice reduction: What works?</a>
@@ -309,8 +309,9 @@ Nov 2, 2026
   function init() {
     if (done) return; done = true;
     var brand = document.querySelector('.navbar-brand');
-    var root = new URL(brand ? brand.getAttribute('href') : 'index.html', location.href);
-    root = root.href.replace(/index\.html$/, '');
+    var rootUrl = new URL(brand && brand.getAttribute('href') ? brand.getAttribute('href') : './', location.href);
+    rootUrl.search = ''; rootUrl.hash = '';
+    var root = rootUrl.href.replace(/[^\/]*$/, '');
 
     var nav = document.querySelector('.navbar .navbar-nav');
     if (nav) {
@@ -329,15 +330,22 @@ Nov 2, 2026
       '<button class="me-btn" data-open="font">글씨체</button>';
     document.body.appendChild(box);
 
-    // 이 페이지 수정: 공개 페이지는 깃허브 편집 화면으로 연결 (비공개 탭은 구글 문서 버튼을 써요)
+    // 이 페이지 수정: 공개 페이지는 깃허브 편집 화면, 비공개 탭은 구글 문서로 연결
     var here = location.href.split('#')[0].split('?')[0];
     if (here.indexOf(root) === 0) {
       var rel = here.slice(root.length);
       if (rel === '' || /\/$/.test(rel)) rel += 'index.html';
-      if (/\.html$/.test(rel) && rel.indexOf('private/') !== 0) {
+      var editUrl = null;
+      if (rel.indexOf('private/') === 0) {
+        var doc = document.querySelector('.doc-open');
+        if (doc) editUrl = doc.href;
+      } else if (/\.html$/.test(rel)) {
+        editUrl = 'https://github.com/' + REPO + '/edit/main/' + rel.replace(/\.html$/, '.qmd');
+      }
+      if (editUrl) {
         var ed = document.createElement('a');
-        ed.className = 'me-edit';
-        ed.href = 'https://github.com/' + REPO + '/edit/main/' + rel.replace(/\.html$/, '.qmd');
+        ed.className = 'me-btn me-edit';
+        ed.href = editUrl;
         ed.target = '_blank'; ed.rel = 'noopener';
         ed.textContent = '이 페이지 수정';
         box.appendChild(ed);
@@ -345,7 +353,7 @@ Nov 2, 2026
     }
     var panel = box.querySelector('#me-panel'), mode = null;
 
-    box.querySelectorAll('.me-btn').forEach(function (btn) {
+    box.querySelectorAll('.me-btn[data-open]').forEach(function (btn) {
       btn.addEventListener('click', function () {
         var m = btn.getAttribute('data-open');
         if (mode === m && panel.classList.contains('open')) { panel.classList.remove('open'); mode = null; return; }
