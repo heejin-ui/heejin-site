@@ -431,3 +431,67 @@ table {
   #me-settings .st-side { position: static; }
 }
 #me-settings .tb-main > .ed-tip { margin-top: 16px; }
+
+/* Setting 탭: 편집 창과 같은 모양으로 */
+#me-settings .st-panel {
+  background: var(--site-bg);
+  background: color-mix(in srgb, var(--site-bg) 55%, #fff);
+  border: 1px solid var(--site-soft);
+  border-radius: 14px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, .08);
+  padding: 22px 24px 18px;
+}
+#me-settings .st-panel h2 {
+  font-size: 18px; border: none; padding: 0; margin: 0 0 4px;
+  font-family: var(--font-body); font-weight: 700; color: var(--site-text);
+}
+#me-settings .st-lead { font-size: 13px; margin: 0 0 18px; padding-bottom: 14px; border-bottom: 1px solid var(--site-soft); }
+#me-settings h3 { font-size: 13px; color: var(--site-accent); }
+#me-settings .tb-cols h3 { font-size: 14px; }
+
+/* 버튼: 편집 창 버튼과 같은 모양 */
+#me-settings .st-btn,
+#me-settings .tb-inline button,
+#me-settings .st-font-use button,
+#me-settings .st-token-save {
+  background: var(--site-bg); color: var(--site-accent);
+  border: 1px solid var(--site-accent); border-radius: 8px;
+  padding: 5px 12px; font-size: 13px; line-height: 1.4; cursor: pointer;
+  transition: background .15s, color .15s;
+}
+#me-settings .st-btn:hover:not(:disabled),
+#me-settings .tb-inline button:hover:not(:disabled),
+#me-settings .st-font-use button:hover { background: var(--site-soft); }
+#me-settings .st-btn:disabled, #me-settings .tb-inline button:disabled { opacity: .4; cursor: default; }
+#me-settings .tb-row button { min-width: 34px; height: 34px; padding: 0 10px; }
+#me-settings .st-apply,
+#me-settings .tb-inline .ed-apply,
+#me-settings .st-token-save {
+  background: var(--site-accent); color: #fff; padding: 6px 22px; font-size: 14px;
+}
+#me-settings .st-apply:hover:not(:disabled),
+#me-settings .tb-inline .ed-apply:hover:not(:disabled) { background: var(--site-accent); filter: brightness(1.08); }
+#me-settings .st-chip { transition: transform .1s; }
+#me-settings .st-chip:hover { transform: translateY(-1px); }
+
+/* 입력 칸: 편집 창과 같은 모양 */
+#me-settings .st-hex, #me-settings .st-font-in, #me-settings input[type=password],
+#me-settings .tb-row .tb-name, #me-settings .tb-new, #me-settings .ed-token {
+  border: 1px solid var(--site-soft); border-radius: 8px; padding: 7px 10px;
+  background: #fff; color: var(--site-text); font-size: 14px; height: 34px;
+}
+#me-settings input:focus { outline: none; border-color: var(--site-accent); box-shadow: 0 0 0 3px var(--site-soft); }
+#me-settings input[type=color] { height: 34px; }
+
+/* 아래 버튼 줄: 편집 창처럼 왼쪽 상태, 오른쪽 버튼 */
+#me-settings .st-actions,
+#me-settings .tb-inline .ed-foot {
+  display: flex; align-items: center; gap: 8px;
+  margin-top: 20px; padding-top: 14px; border-top: 1px solid var(--site-soft);
+}
+#me-settings .st-status, #me-settings .tb-inline .ed-status { flex: 1; display: block; margin: 0; font-size: 13px; color: var(--site-sub); min-height: 0; }
+#me-settings .st-side { top: 80px; }
+#me-settings .st-preview { background: var(--site-bg); }
+#me-settings .st-font { background: var(--site-bg); transition: border-color .15s; }
+#me-settings .st-font:hover { border-color: var(--site-accent); }
+#me-settings *, #me-settings *::before, #me-settings *::after { box-sizing: border-box; }
