@@ -28,88 +28,53 @@
     "text": "Skills\n\nR\n[Add other skills as you learn them]"
   },
   {
-    "objectID": "private/myspace.html",
-    "href": "private/myspace.html",
-    "title": "My space",
+    "objectID": "private/ask.html",
+    "href": "private/ask.html",
+    "title": "Ask Claude",
     "section": "",
     "text": "나만 볼 수 있는 페이지예요."
   },
   {
-    "objectID": "private/english.html",
-    "href": "private/english.html",
-    "title": "English",
+    "objectID": "private/roadmap.html",
+    "href": "private/roadmap.html",
+    "title": "Roadmap",
     "section": "",
     "text": "나만 볼 수 있는 페이지예요."
   },
   {
-    "objectID": "private/reading.html",
-    "href": "private/reading.html",
-    "title": "Reading list",
+    "objectID": "private/schools.html",
+    "href": "private/schools.html",
+    "title": "Schools",
     "section": "",
     "text": "나만 볼 수 있는 페이지예요."
   },
   {
-    "objectID": "private/settings.html",
-    "href": "private/settings.html",
-    "title": "Setting",
+    "objectID": "private/tab.html",
+    "href": "private/tab.html",
+    "title": "비공개",
     "section": "",
     "text": "나만 볼 수 있는 페이지예요."
   },
   {
-    "objectID": "publications.html",
-    "href": "publications.html",
-    "title": "Publications",
+    "objectID": "projects.html",
+    "href": "projects.html",
+    "title": "Projects",
     "section": "",
-    "text": "[Add conference presentations here]"
+    "text": "Longitudinal analysis of the KCYPS 2010 cohort.\n\nStatus: [in progress]\nCode: [link to a GitHub repository when ready]"
   },
   {
-    "objectID": "publications.html#presentations",
-    "href": "publications.html#presentations",
-    "title": "Publications",
+    "objectID": "projects.html#childhood-adversity-and-adolescent-mental-health",
+    "href": "projects.html#childhood-adversity-and-adolescent-mental-health",
+    "title": "Projects",
     "section": "",
-    "text": "[Add conference presentations here]"
+    "text": "Longitudinal analysis of the KCYPS 2010 cohort.\n\nStatus: [in progress]\nCode: [link to a GitHub repository when ready]"
   },
   {
-    "objectID": "publications.html#papers",
-    "href": "publications.html#papers",
-    "title": "Publications",
-    "section": "Papers",
-    "text": "Papers\n\n[Add papers here]"
-  },
-  {
-    "objectID": "contact.html",
-    "href": "contact.html",
-    "title": "Contact",
-    "section": "",
-    "text": "I’m always happy to talk about research, mental health, and building a more accepting society.\n\nEmail: heejin990130@gmail.com\nGitHub: [your GitHub page]"
-  },
-  {
-    "objectID": "notes/prejudice-reduction.html",
-    "href": "notes/prejudice-reduction.html",
-    "title": "Prejudice reduction: What works?",
-    "section": "",
-    "text": "Paluck, E. L., & Green, D. P. (2009). Prejudice reduction: What works? A review and assessment of research and practice. Annual Review of Psychology, 60, 339–367."
-  },
-  {
-    "objectID": "notes/prejudice-reduction.html#what-it-says",
-    "href": "notes/prejudice-reduction.html#what-it-says",
-    "title": "Prejudice reduction: What works?",
-    "section": "What it says",
-    "text": "What it says\n[Summarize in your own words]"
-  },
-  {
-    "objectID": "notes/prejudice-reduction.html#what-i-think",
-    "href": "notes/prejudice-reduction.html#what-i-think",
-    "title": "Prejudice reduction: What works?",
-    "section": "What I think",
-    "text": "What I think\n[Your thoughts]"
-  },
-  {
-    "objectID": "notes.html",
-    "href": "notes.html",
-    "title": "Notes",
-    "section": "",
-    "text": "Prejudice reduction: What works?\n\n\n\nPaluck & Green, Annual Review of Psychology, 2009\n\n\n\n\n\n\nNov 2, 2026\n\n\n\n\n\nNo matching items"
+    "objectID": "projects.html#next-project",
+    "href": "projects.html#next-project",
+    "title": "Projects",
+    "section": "[Next project]",
+    "text": "[Next project]\n[Short description]"
   },
   {
     "objectID": "cv.html",
@@ -147,44 +112,86 @@
     "text": "Skills\n\nR\n[Add more]"
   },
   {
-    "objectID": "projects.html",
-    "href": "projects.html",
-    "title": "Projects",
+    "objectID": "notes.html",
+    "href": "notes.html",
+    "title": "Notes",
     "section": "",
-    "text": "Longitudinal analysis of the KCYPS 2010 cohort.\n\nStatus: [in progress]\nCode: [link to a GitHub repository when ready]"
+    "text": "Prejudice reduction: What works?\n\n\n\nPaluck & Green, Annual Review of Psychology, 2009\n\n\n\n\n\n\nNov 2, 2026\n\n\n\n\n\nNo matching items"
   },
   {
-    "objectID": "projects.html#childhood-adversity-and-adolescent-mental-health",
-    "href": "projects.html#childhood-adversity-and-adolescent-mental-health",
-    "title": "Projects",
+    "objectID": "notes/prejudice-reduction.html",
+    "href": "notes/prejudice-reduction.html",
+    "title": "Prejudice reduction: What works?",
     "section": "",
-    "text": "Longitudinal analysis of the KCYPS 2010 cohort.\n\nStatus: [in progress]\nCode: [link to a GitHub repository when ready]"
+    "text": "Paluck, E. L., & Green, D. P. (2009). Prejudice reduction: What works? A review and assessment of research and practice. Annual Review of Psychology, 60, 339–367."
   },
   {
-    "objectID": "projects.html#next-project",
-    "href": "projects.html#next-project",
-    "title": "Projects",
-    "section": "[Next project]",
-    "text": "[Next project]\n[Short description]"
+    "objectID": "notes/prejudice-reduction.html#what-it-says",
+    "href": "notes/prejudice-reduction.html#what-it-says",
+    "title": "Prejudice reduction: What works?",
+    "section": "What it says",
+    "text": "What it says\n[Summarize in your own words]"
   },
   {
-    "objectID": "private/tab.html",
-    "href": "private/tab.html",
-    "title": "비공개",
+    "objectID": "notes/prejudice-reduction.html#what-i-think",
+    "href": "notes/prejudice-reduction.html#what-i-think",
+    "title": "Prejudice reduction: What works?",
+    "section": "What I think",
+    "text": "What I think\n[Your thoughts]"
+  },
+  {
+    "objectID": "contact.html",
+    "href": "contact.html",
+    "title": "Contact",
+    "section": "",
+    "text": "I’m always happy to talk about research, mental health, and building a more accepting society.\n\nEmail: heejin990130@gmail.com\nGitHub: [your GitHub page]"
+  },
+  {
+    "objectID": "publications.html",
+    "href": "publications.html",
+    "title": "Publications",
+    "section": "",
+    "text": "[Add conference presentations here]"
+  },
+  {
+    "objectID": "publications.html#presentations",
+    "href": "publications.html#presentations",
+    "title": "Publications",
+    "section": "",
+    "text": "[Add conference presentations here]"
+  },
+  {
+    "objectID": "publications.html#papers",
+    "href": "publications.html#papers",
+    "title": "Publications",
+    "section": "Papers",
+    "text": "Papers\n\n[Add papers here]"
+  },
+  {
+    "objectID": "private/settings.html",
+    "href": "private/settings.html",
+    "title": "Setting",
     "section": "",
     "text": "나만 볼 수 있는 페이지예요."
   },
   {
-    "objectID": "private/schools.html",
-    "href": "private/schools.html",
-    "title": "Schools",
+    "objectID": "private/reading.html",
+    "href": "private/reading.html",
+    "title": "Reading list",
     "section": "",
     "text": "나만 볼 수 있는 페이지예요."
   },
   {
-    "objectID": "private/roadmap.html",
-    "href": "private/roadmap.html",
-    "title": "Roadmap",
+    "objectID": "private/english.html",
+    "href": "private/english.html",
+    "title": "English",
+    "section": "",
+    "text": "나만 볼 수 있는 페이지예요."
+  },
+  {
+    "objectID": "private/myspace.html",
+    "href": "private/myspace.html",
+    "title": "My space",
     "section": "",
     "text": "나만 볼 수 있는 페이지예요."
   },
