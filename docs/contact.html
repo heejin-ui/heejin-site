@@ -64,6 +64,7 @@ ul.task-list li input[type="checkbox"] {
 
 
 <link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="site-theme.css">
 </head>
 
 <body class="nav-fixed fullcontent quarto-light"><a id="quarto-skip-link" class="visually-hidden-focusable" href="#quarto-document-content">Skip to main content</a>
@@ -155,7 +156,7 @@ ul.task-list li input[type="checkbox"] {
 </main> <!-- /main -->
 <script>
 (function () {
-  var KEY = 'hj-me', THEME = 'hj-theme', FONT = 'hj-font';
+  var KEY = 'hj-me', ME_THEME = 'hj-me-theme';
   // 깃허브 저장소 이름. 저장소 이름이나 아이디를 바꾸면 여기도 바꿔 주세요.
   var REPO = 'heejin-ui/heejin-site';
   function get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
@@ -164,72 +165,80 @@ ul.task-list li input[type="checkbox"] {
 
   var q = new URLSearchParams(location.search);
   if (q.get('me') === 'on') set(KEY, '1');
-  if (q.get('me') === 'off') { del(KEY); del(THEME); del(FONT); }
+  if (q.get('me') === 'off') { del(KEY); del(ME_THEME); }
   if (get(KEY) !== '1') return;
 
+  /* 색·글씨체 설정. 글씨체는 구글 폰트(모두 상업적 사용 가능한 오픈 라이선스)만 써요. */
+  var PUBLIC_DEFAULT = { bg: '#FBF7F3', text: '#3A2A22', accent: '#B5562E', head: 'Nanum Myeongjo', body: 'Noto Sans KR' };
+  var ME_DEFAULT = { bg: '#FDF4F7', text: '#3B2A4A', accent: '#7B68C8', head: 'Nanum Myeongjo', body: 'Noto Sans KR' };
   var PRESETS = [
-    { n: '연분홍', bg: '#FDF4F7', ac: '#C2557E' },
-    { n: '연보라', bg: '#F7F5FD', ac: '#7B68C8' },
-    { n: '분홍 + 연보라', bg: '#FDF4F7', ac: '#7B68C8' },
-    { n: '테라코타 (남들이 보는 색)', bg: '#FBF7F3', ac: '#B5562E' }
+    { n: '테라코타', bg: '#FBF7F3', text: '#3A2A22', accent: '#B5562E' },
+    { n: '연분홍', bg: '#FDF4F7', text: '#3F2430', accent: '#C2557E' },
+    { n: '연보라', bg: '#F7F5FD', text: '#2E2848', accent: '#7B68C8' },
+    { n: '분홍 + 연보라', bg: '#FDF4F7', text: '#3B2A4A', accent: '#7B68C8' },
+    { n: '흰 종이', bg: '#FFFFFF', text: '#222222', accent: '#555555' },
+    { n: '숲', bg: '#F4F7F2', text: '#24331F', accent: '#4E7A3A' }
   ];
-  var FONTS = [
-    { n: '기본 · 나눔명조 + 노토 산스', h: "'Nanum Myeongjo', serif", b: "'Noto Sans KR', sans-serif" },
-    { n: '고운바탕 + 고운돋움', h: "'Gowun Batang', serif", b: "'Gowun Dodum', sans-serif" },
-    { n: '나눔손글씨 펜 + 고운돋움', h: "'Nanum Pen Script', cursive", b: "'Gowun Dodum', sans-serif" },
-    { n: '주아 + 고운돋움', h: "'Jua', sans-serif", b: "'Gowun Dodum', sans-serif" }
+  var FONT_LIST = [
+    ['Noto Sans KR', '고딕'], ['Noto Serif KR', '명조'], ['Nanum Myeongjo', '명조'], ['Nanum Gothic', '고딕'],
+    ['Gowun Batang', '명조'], ['Gowun Dodum', '고딕'], ['IBM Plex Sans KR', '고딕'], ['Gothic A1', '고딕'],
+    ['Hahmlet', '명조'], ['Song Myung', '명조'], ['Sunflower', '고딕'], ['Orbit', '고딕'],
+    ['Nanum Pen Script', '손글씨'], ['Nanum Brush Script', '손글씨'], ['Gaegu', '손글씨'], ['Hi Melody', '손글씨'],
+    ['Gamja Flower', '손글씨'], ['Poor Story', '손글씨'], ['Single Day', '손글씨'], ['Yeon Sung', '손글씨'],
+    ['Jua', '둥근'], ['Dongle', '둥근'], ['Do Hyeon', '제목용'], ['Black Han Sans', '제목용']
   ];
-  var PRIVATE = [
-    ['My space', 'private/myspace.html'],
-    ['Roadmap', 'private/roadmap.html'],
-    ['Schools', 'private/schools.html'],
-    ['Reading list', 'private/reading.html'],
-    ['English', 'private/english.html']
+  function isSerif(name) { return FONT_LIST.some(function (f) { return f[0] === name && f[1] === '명조'; }); }
+  function fontStack(name) {
+    return "'" + name.replace(/'/g, '') + "', " + (isSerif(name) ? "'Noto Serif KR', serif" : "'Noto Sans KR', sans-serif");
+  }
+  function fontsUrl(names) {
+    var u = [];
+    names.forEach(function (n) { if (n && u.indexOf(n) < 0) u.push(n); });
+    return 'https://fonts.googleapis.com/css2?' + u.map(function (n) { return 'family=' + encodeURIComponent(n).replace(/%20/g, '+'); }).join('&') + '&display=swap';
+  }
+  function loadFonts(id, names) {
+    var l = document.getElementById(id);
+    if (!l) { l = document.createElement('link'); l.id = id; l.rel = 'stylesheet'; document.head.appendChild(l); }
+    var u = fontsUrl(names); if (l.href !== u) l.href = u;
+  }
+  function hexOk(h) { return /^#[0-9a-fA-F]{6}$/.test(h); }
+  function mix(a, b, t) {
+    var x = function (h, i) { return parseInt(h.slice(i, i + 2), 16); };
+    return '#' + [1, 3, 5].map(function (i) { return Math.round(x(a, i) * (1 - t) + x(b, i) * t).toString(16).padStart(2, '0'); }).join('');
+  }
+  function lum(h) {
+    return [1, 3, 5].map(function (i) { var c = parseInt(h.slice(i, i + 2), 16) / 255; return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); })
+      .reduce(function (s, c, i) { return s + c * [0.2126, 0.7152, 0.0722][i]; }, 0);
+  }
+  function contrast(a, b) { var x = lum(a), y = lum(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); }
+  function themeVars(t) {
+    return { '--site-bg': t.bg, '--site-text': t.text, '--site-accent': t.accent,
+      '--site-soft': mix(t.bg, t.accent, 0.16), '--site-sub': mix(t.text, t.bg, 0.38),
+      '--font-head': fontStack(t.head), '--font-body': fontStack(t.body) };
+  }
+  function applyVars(el, t) { var v = themeVars(t); Object.keys(v).forEach(function (k) { el.style.setProperty(k, v[k]); }); }
+  function applyMe(t) { applyVars(document.documentElement, t); loadFonts('me-font-link', [t.head, t.body]); }
+  function meTheme() {
+    try { var t = JSON.parse(get(ME_THEME)); if (t && hexOk(t.bg) && hexOk(t.text) && hexOk(t.accent) && t.head && t.body) return t; } catch (e) {}
+    return ME_DEFAULT;
+  }
+  applyMe(meTheme());
+
+  // 비공개 탭 기본 목록. 실제 목록은 private-data/tabs.json에 저장돼요 (탭 관리에서 바꿔요).
+  var PRIVATE_DEFAULT = [
+    { key: 'myspace', name: 'My space' },
+    { key: 'roadmap', name: 'Roadmap' },
+    { key: 'schools', name: 'Schools' },
+    { key: 'reading', name: 'Reading list' },
+    { key: 'english', name: 'English' }
   ];
-
-  function hexToHsl(hex) {
-    var r = parseInt(hex.slice(1, 3), 16) / 255, g = parseInt(hex.slice(3, 5), 16) / 255, b = parseInt(hex.slice(5, 7), 16) / 255;
-    var mx = Math.max(r, g, b), mn = Math.min(r, g, b), l = (mx + mn) / 2, s = 0, h = 0;
-    if (mx !== mn) {
-      var d = mx - mn;
-      s = l > 0.5 ? d / (2 - mx - mn) : d / (mx + mn);
-      h = mx === r ? (g - b) / d + (g < b ? 6 : 0) : mx === g ? (b - r) / d + 2 : (r - g) / d + 4;
-      h *= 60;
-    }
-    return [Math.round(h), Math.round(s * 100), Math.round(l * 100)];
+  var TABS_CACHE = 'hj-tabs';
+  function privateTabs() {
+    try { var t = JSON.parse(get(TABS_CACHE)); if (Array.isArray(t)) return t; } catch (e) {}
+    return PRIVATE_DEFAULT;
   }
-  function hsl(h, s, l) { return 'hsl(' + h + ',' + s + '%,' + l + '%)'; }
-  function lightBg(ac) { var c = hexToHsl(ac); return hslToHex(c[0], Math.max(c[1], 50), 97); }
-  function hslToHex(h, s, l) {
-    s /= 100; l /= 100;
-    var k = function (n) { return (n + h / 30) % 12; }, a = s * Math.min(l, 1 - l);
-    var f = function (n) { return l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1))); };
-    var x = function (v) { return Math.round(v * 255).toString(16).padStart(2, '0'); };
-    return '#' + x(f(0)) + x(f(8)) + x(f(4));
-  }
+  var ROOT = '';
 
-  function applyTheme(t) {
-    var a = hexToHsl(t.ac), b = hexToHsl(t.bg), r = document.documentElement.style;
-    r.setProperty('--site-bg', t.bg);
-    r.setProperty('--site-accent', hsl(a[0], Math.min(a[1], 70), Math.min(a[2], 45)));
-    r.setProperty('--site-soft', hsl(b[0], Math.max(b[1], 40), 90));
-    r.setProperty('--site-text', hsl(a[0], 30, 18));
-    r.setProperty('--site-sub', hsl(a[0], 18, 42));
-  }
-  function applyFont(i) {
-    var f = FONTS[i] || FONTS[0], r = document.documentElement.style;
-    r.setProperty('--font-head', f.h);
-    r.setProperty('--font-body', f.b);
-  }
-
-  var theme = PRESETS[2], fontIdx = 0;
-  try { var st = JSON.parse(get(THEME)); if (st && st.bg && st.ac) theme = st; } catch (e) {}
-  var sf = parseInt(get(FONT), 10); if (!isNaN(sf)) fontIdx = sf;
-  var savedTheme = theme, savedFont = fontIdx;
-  applyTheme(theme); applyFont(fontIdx);
-
-  document.addEventListener('DOMContentLoaded', init);
-  if (document.readyState !== 'loading') init();
 
   var done = false;
   function init() {
@@ -239,33 +248,30 @@ ul.task-list li input[type="checkbox"] {
     rootUrl.search = ''; rootUrl.hash = '';
     var root = rootUrl.href.replace(/[^\/]*$/, '');
 
-    var nav = document.querySelector('.navbar .navbar-nav');
-    if (nav) {
-      PRIVATE.forEach(function (p) {
-        var li = document.createElement('li'); li.className = 'nav-item';
-        var a = document.createElement('a'); a.className = 'nav-link me-link'; a.href = root + p[1];
-        a.innerHTML = '<span class="menu-text">' + p[0] + '</span>';
-        li.appendChild(a); nav.appendChild(li);
-      });
-    }
+    ROOT = root;
+    renderPrivateNav(privateTabs());
+    refreshPrivateTabs();
 
     var box = document.createElement('div'); box.id = 'me-tools';
-    box.innerHTML =
-      '<div id="me-panel"></div>' +
-      '<button class="me-btn" data-open="color">오늘의 색</button>' +
-      '<button class="me-btn" data-open="font">글씨체</button>';
     document.body.appendChild(box);
+    refreshMeTheme();
+    var settingsEl = document.getElementById('me-settings');
+    if (settingsEl) renderSettings(settingsEl);
 
     // 이 페이지 수정: 공개 페이지는 원본 글을, 비공개 탭은 암호화된 내용을 고쳐요
     var here = location.href.split('#')[0].split('?')[0];
     var priv = document.getElementById('private-content');
     if (priv) {
+      var pk = priv.getAttribute('data-key') || new URLSearchParams(location.search).get('k') || '';
+      var tab = privateTabs().filter(function (t) { return t.key === pk; })[0];
       var titleEl = document.querySelector('h1.title');
-      privateInit(priv, priv.getAttribute('data-key'), titleEl ? titleEl.textContent : '', box);
-    } else if (here.indexOf(root) === 0) {
+      if (tab && titleEl) { titleEl.textContent = tab.name; document.title = tab.name; }
+      if (pk) privateInit(priv, pk, tab ? tab.name : (titleEl ? titleEl.textContent : ''), box);
+      else priv.innerHTML = '<p>열 탭을 메뉴에서 골라 주세요.</p>';
+    } else if (here.indexOf(root) === 0 && !settingsEl) {
       var rel = here.slice(root.length);
       if (rel === '' || /\/$/.test(rel)) rel += 'index.html';
-      if (/\.html$/.test(rel)) {
+      if (/\.html$/.test(rel) && rel.indexOf('private/') !== 0) {
         var qmdPath = rel.replace(/\.html$/, '.qmd');
         var ed = document.createElement('a');
         ed.className = 'me-btn me-edit';
@@ -274,79 +280,6 @@ ul.task-list li input[type="checkbox"] {
         ed.addEventListener('click', function (e) { e.preventDefault(); openEditor({ kind: 'qmd', path: qmdPath, label: qmdPath }); });
         box.appendChild(ed);
       }
-    }
-    var panel = box.querySelector('#me-panel'), mode = null;
-
-    box.querySelectorAll('.me-btn[data-open]').forEach(function (btn) {
-      btn.addEventListener('click', function () {
-        var m = btn.getAttribute('data-open');
-        if (mode === m && panel.classList.contains('open')) { panel.classList.remove('open'); mode = null; return; }
-        mode = m; draw(); panel.classList.add('open');
-      });
-    });
-
-    function dirty() {
-      return theme.bg !== savedTheme.bg || theme.ac !== savedTheme.ac || fontIdx !== savedFont;
-    }
-    function actions(msg) {
-      var d = dirty();
-      return '<div class="me-actions">' +
-        '<span class="me-status">' + (msg || (d ? '미리보기 중이에요. 저장해야 다음에도 유지돼요.' : '저장된 상태예요.')) + '</span>' +
-        '<button class="me-undo"' + (d ? '' : ' disabled') + '>되돌리기</button>' +
-        '<button class="me-save"' + (d ? '' : ' disabled') + '>저장</button></div>';
-    }
-    function bindActions() {
-      panel.querySelector('.me-save').addEventListener('click', function () {
-        set(THEME, JSON.stringify(theme)); set(FONT, String(fontIdx));
-        savedTheme = theme; savedFont = fontIdx;
-        draw('저장했어요!');
-      });
-      panel.querySelector('.me-undo').addEventListener('click', function () {
-        theme = savedTheme; fontIdx = savedFont;
-        applyTheme(theme); applyFont(fontIdx); draw('저장된 색과 글씨체로 돌아왔어요.');
-      });
-    }
-    function refreshActions() {
-      var old = panel.querySelector('.me-actions');
-      var tmp = document.createElement('div'); tmp.innerHTML = actions();
-      old.replaceWith(tmp.firstChild); bindActions();
-    }
-
-    function draw(msg) {
-      if (mode === 'color') {
-        var html = '<p>정해둔 색</p><div class="row">';
-        PRESETS.forEach(function (p, i) {
-          var on = p.bg === theme.bg && p.ac === theme.ac ? ' on' : '';
-          html += '<button class="dot' + on + '" title="' + p.n + '" aria-label="' + p.n + '" data-i="' + i + '" style="background:' + p.ac + '"></button>';
-        });
-        html += '</div><p>직접 고르기</p><div class="row">' +
-          '<label>강조색 <input type="color" id="me-ac" value="' + theme.ac + '"></label>' +
-          '<label>바탕색 <input type="color" id="me-bg" value="' + theme.bg + '"></label>' +
-          '<label><input type="checkbox" id="me-auto" checked> 바탕색 자동</label></div>';
-        panel.innerHTML = html + actions(msg);
-        panel.querySelectorAll('.dot').forEach(function (d) {
-          d.addEventListener('click', function () { theme = PRESETS[+d.getAttribute('data-i')]; applyTheme(theme); draw(); });
-        });
-        panel.querySelector('#me-ac').addEventListener('input', function (e) {
-          var bg = panel.querySelector('#me-auto').checked ? lightBg(e.target.value) : theme.bg;
-          theme = { n: '직접 고른 색', ac: e.target.value, bg: bg };
-          panel.querySelector('#me-bg').value = bg; applyTheme(theme); refreshActions();
-        });
-        panel.querySelector('#me-bg').addEventListener('input', function (e) {
-          panel.querySelector('#me-auto').checked = false;
-          theme = { n: '직접 고른 색', ac: theme.ac, bg: e.target.value }; applyTheme(theme); refreshActions();
-        });
-      } else {
-        var h = '<p>글씨체</p>';
-        FONTS.forEach(function (f, i) {
-          h += '<button class="font-opt' + (i === fontIdx ? ' on' : '') + '" data-i="' + i + '" style="font-family:' + f.h.replace(/"/g, "'") + '">' + f.n + '</button>';
-        });
-        panel.innerHTML = h + actions(msg);
-        panel.querySelectorAll('.font-opt').forEach(function (b) {
-          b.addEventListener('click', function () { fontIdx = +b.getAttribute('data-i'); applyFont(fontIdx); draw(); });
-        });
-      }
-      bindActions();
     }
   }
 
@@ -625,7 +558,7 @@ ul.task-list li input[type="checkbox"] {
   /* 비공개 탭: 비밀번호로 열고, 같은 편집 창으로 고치기 */
   function privateInit(el, pkey, label, box) {
     var keyFile = null, key = null, body = '', btnAdded = false;
-    var ALL = PRIVATE.map(function (p) { return p[1].replace(/^private\/|\.html$/g, ''); });
+    var ALL = privateTabs().map(function (t) { return t.key; });
 
     function msg(html) { el.innerHTML = '<div class="pv-box">' + html + '</div>'; }
     function fail(e) {
@@ -755,6 +688,380 @@ ul.task-list li input[type="checkbox"] {
       });
     }).catch(fail);
   }
+
+  /* ---------- 탭 관리 ---------- */
+  function renderPrivateNav(list) {
+    var nav = document.querySelector('.navbar .navbar-nav');
+    if (!nav) return;
+    nav.querySelectorAll('li.me-li').forEach(function (li) { li.remove(); });
+    var cur = new URLSearchParams(location.search).get('k');
+    list.forEach(function (t) {
+      var li = document.createElement('li'); li.className = 'nav-item me-li';
+      var a = document.createElement('a'); a.className = 'nav-link me-link' + (cur === t.key ? ' active' : '');
+      a.href = ROOT + 'private/tab.html?k=' + encodeURIComponent(t.key);
+      a.innerHTML = '<span class="menu-text">' + esc(t.name) + '</span>';
+      li.appendChild(a); nav.appendChild(li);
+    });
+    var li = document.createElement('li'); li.className = 'nav-item me-li';
+    var a = document.createElement('a'); a.className = 'nav-link me-link' + (/private\/settings\.html$/.test(location.pathname) ? ' active' : '');
+    a.href = ROOT + 'private/settings.html'; a.innerHTML = '<span class="menu-text">Setting</span>';
+    li.appendChild(a); nav.appendChild(li);
+  }
+  function refreshPrivateTabs() {
+    ghGet(PDIR + 'tabs.json').then(function (f) {
+      if (!f) return;
+      var list = JSON.parse(f.text);
+      if (JSON.stringify(list) !== JSON.stringify(privateTabs())) { set(TABS_CACHE, JSON.stringify(list)); renderPrivateNav(list); }
+    }).catch(function () {});
+  }
+
+  function parseNav(yml) {
+    var lines = yml.split('\n'), i = 0, start = -1, end = -1, ind = '', items = [];
+    for (; i < lines.length; i++) {
+      var m = lines[i].match(/^(\s*)left:\s*$/);
+      if (m && i > 0 && /navbar:/.test(lines.slice(Math.max(0, i - 3), i).join('\n'))) { start = i; ind = m[1]; break; }
+    }
+    if (start < 0) return null;
+    for (i = start + 1; i < lines.length; i++) {
+      var l = lines[i];
+      if (l.trim() && l.match(/^(\s*)/)[1].length <= ind.length) break;
+      var h = l.match(/^\s*-\s*href:\s*(.+?)\s*$/), t = l.match(/^\s*text:\s*(.+?)\s*$/);
+      if (h) items.push({ href: h[1].replace(/^["']|["']$/g, ''), text: '' });
+      else if (t && items.length) items[items.length - 1].text = t[1].replace(/^"(.*)"$/, '$1').replace(/\\"/g, '"');
+    }
+    end = i;
+    return { lines: lines, start: start, end: end, ind: ind, items: items };
+  }
+  function buildNav(p, items) {
+    var a = p.ind + '  ', b = p.ind + '    ';
+    var block = items.map(function (it) {
+      return a + '- href: ' + it.href + '\n' + b + 'text: "' + it.text.replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"';
+    });
+    return p.lines.slice(0, p.start + 1).concat(block, p.lines.slice(p.end)).join('\n');
+  }
+  function slugify(name) {
+    return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40);
+  }
+
+  function openTabs() {
+    var old = document.getElementById('me-editor'); if (old) old.remove();
+    var wrap = document.createElement('div'); wrap.id = 'me-editor';
+    wrap.innerHTML =
+      '<div class="ed-card tb-card">' +
+        '<div class="ed-head"><strong>탭 관리</strong><span class="ed-path">순서 바꾸기 · 추가 · 삭제 · 이름 바꾸기</span>' +
+        '<button class="ed-close" type="button">닫기</button></div>' +
+        '<div class="ed-setup" hidden><p class="ed-setup-msg"><b>처음 한 번만</b> 깃허브 열쇠(토큰)를 넣어 주세요. 이 브라우저에만 저장돼요.</p>' + TOKEN_HELP +
+          '<div class="ed-row"><input class="ed-token" type="password" placeholder="github_pat_로 시작하는 글자"><button class="ed-token-save" type="button">저장</button></div></div>' +
+        '<div class="tb-main" hidden>' +
+          '<div class="tb-cols">' +
+            '<section><h3>공개 탭</h3><p class="ed-tip">누구나 보는 메뉴예요. 적용하면 2~3분 뒤 홈페이지에 반영돼요.</p><div class="tb-list" data-kind="pub"></div>' +
+              '<div class="tb-add"><input class="tb-new" data-kind="pub" placeholder="새 탭 이름"><button type="button" class="tb-add-btn" data-kind="pub">추가</button></div></section>' +
+            '<section><h3>비공개 탭</h3><p class="ed-tip">나만 보는 메뉴예요. 적용하면 바로 바뀌어요.</p><div class="tb-list" data-kind="priv"></div>' +
+              '<div class="tb-add"><input class="tb-new" data-kind="priv" placeholder="새 탭 이름"><button type="button" class="tb-add-btn" data-kind="priv">추가</button></div></section>' +
+          '</div>' +
+          '<p class="ed-tip">삭제는 메뉴에서만 빼요. 써 둔 글은 저장소에 남아 있어요. 비공개 탭 이름은 암호화되지 않아요.</p>' +
+          '<div class="ed-foot"><span class="ed-status"></span><button class="ed-apply" type="button">적용</button></div>' +
+        '</div>' +
+      '</div>';
+    document.body.appendChild(wrap);
+    var $ = function (c) { return wrap.querySelector(c); };
+    var status = $('.ed-status');
+    var st = { nav: null, pub: [], priv: [], origPub: '', origPriv: '', dirty: false };
+
+    function close() {
+      if (st.dirty && !confirm('적용하지 않은 변경이 있어요. 그래도 닫을까요?')) return;
+      wrap.remove();
+    }
+    $('.ed-close').addEventListener('click', close);
+    wrap.addEventListener('click', function (e) { if (e.target === wrap) close(); });
+    function changed() { st.dirty = true; status.textContent = '아직 적용 안 했어요.'; }
+
+    function draw(kind) {
+      var arr = st[kind], box = wrap.querySelector('.tb-list[data-kind="' + kind + '"]');
+      box.innerHTML = '';
+      arr.forEach(function (t, i) {
+        var home = kind === 'pub' && t.href === 'index.qmd';
+        var row = document.createElement('div'); row.className = 'tb-row';
+        row.innerHTML = '<input class="tb-name">' +
+          '<button type="button" class="tb-up" title="위로"' + (i === 0 ? ' disabled' : '') + '>↑</button>' +
+          '<button type="button" class="tb-down" title="아래로"' + (i === arr.length - 1 ? ' disabled' : '') + '>↓</button>' +
+          '<button type="button" class="tb-del"' + (home ? ' disabled title="첫 화면은 지울 수 없어요"' : '') + '>삭제</button>';
+        var inp = row.querySelector('.tb-name');
+        inp.value = kind === 'pub' ? t.text : t.name;
+        if (t.isNew) row.classList.add('tb-newrow');
+        inp.addEventListener('input', function () { if (kind === 'pub') t.text = inp.value; else t.name = inp.value; changed(); });
+        row.querySelector('.tb-up').addEventListener('click', function () { arr.splice(i - 1, 0, arr.splice(i, 1)[0]); changed(); draw(kind); });
+        row.querySelector('.tb-down').addEventListener('click', function () { arr.splice(i + 1, 0, arr.splice(i, 1)[0]); changed(); draw(kind); });
+        row.querySelector('.tb-del').addEventListener('click', function () {
+          if (!confirm('"' + inp.value + '" 탭을 메뉴에서 뺄까요?')) return;
+          arr.splice(i, 1); changed(); draw(kind);
+        });
+        box.appendChild(row);
+      });
+    }
+    wrap.querySelectorAll('.tb-add-btn').forEach(function (b) {
+      b.addEventListener('click', function () {
+        var kind = b.getAttribute('data-kind'), inp = wrap.querySelector('.tb-new[data-kind="' + kind + '"]'), name = inp.value.trim();
+        if (!name) { inp.focus(); return; }
+        if (kind === 'pub') st.pub.push({ href: null, text: name, isNew: true });
+        else st.priv.push({ key: 'p' + Date.now().toString(36), name: name, isNew: true });
+        inp.value = ''; changed(); draw(kind);
+      });
+    });
+    wrap.querySelectorAll('.tb-new').forEach(function (inp) {
+      inp.addEventListener('keydown', function (e) { if (e.key === 'Enter') wrap.querySelector('.tb-add-btn[data-kind="' + inp.getAttribute('data-kind') + '"]').click(); });
+    });
+
+    function showSetup(msg) { $('.ed-setup').hidden = false; $('.tb-main').hidden = true; if (msg) $('.ed-setup-msg').innerHTML = msg; }
+    $('.ed-token-save').addEventListener('click', function () {
+      var v = $('.ed-token').value.trim(); if (!v) return;
+      set(TOKEN, v); $('.ed-setup').hidden = true; load();
+    });
+    function fail(e, doing) {
+      if (e.message === 'auth') showSetup('<b>토큰이 맞지 않거나 기한이 지났어요.</b> 새로 만들어서 넣어 주세요.');
+      else status.textContent = doing + ' 못했어요 (' + e.message + '). 잠시 뒤 다시 해 주세요.';
+    }
+
+    function load() {
+      if (!get(TOKEN)) return showSetup();
+      $('.tb-main').hidden = false; status.textContent = '불러오는 중…';
+      Promise.all([ghGet('_quarto.yml'), ghGet(PDIR + 'tabs.json')]).then(function (r) {
+        st.nav = parseNav(r[0].text);
+        if (!st.nav) throw new Error('메뉴를 찾지 못함');
+        st.pub = st.nav.items.map(function (x) { return { href: x.href, text: x.text }; });
+        st.priv = r[1] ? JSON.parse(r[1].text) : privateTabs().map(function (t) { return { key: t.key, name: t.name }; });
+        st.origPub = JSON.stringify(st.pub); st.origPriv = JSON.stringify(st.priv);
+        st.dirty = false; status.textContent = ''; draw('pub'); draw('priv');
+      }).catch(function (e) { fail(e, '불러오지'); });
+    }
+
+    $('.ed-apply').addEventListener('click', function () {
+      if (!st.dirty) { status.textContent = '바뀐 게 없어요.'; return; }
+      var empty = st.pub.concat(st.priv).some(function (t) { return !(t.text || t.name || '').trim(); });
+      if (empty) { status.textContent = '이름이 빈 탭이 있어요.'; return; }
+      var btn = $('.ed-apply'); btn.disabled = true; status.textContent = '저장하는 중…';
+      var pubChanged = JSON.stringify(st.pub) !== st.origPub, privChanged = JSON.stringify(st.priv) !== st.origPriv;
+      var used = st.pub.map(function (t) { return t.href; });
+      var chain = Promise.resolve();
+      st.pub.forEach(function (t) {
+        if (t.href) return;
+        chain = chain.then(function () {
+          var base = slugify(t.text) || 'page', n = 0;
+          function tryName() {
+            var f = base + (n ? '-' + n : '') + '.qmd';
+            if (used.indexOf(f) >= 0) { n++; return tryName(); }
+            return ghGet(f).then(function (ex) { if (ex) { n++; return tryName(); } return f; });
+          }
+          return tryName().then(function (f) {
+            used.push(f);
+            return ghPut(f, '---\ntitle: "' + t.text.replace(/"/g, '\\"') + '"\n---\n\n여기에 내용을 써 주세요.\n', '탭 추가: ' + t.text).then(function () { t.href = f; });
+          });
+        });
+      });
+      chain.then(function () {
+        if (!pubChanged) return;
+        return ghPut('_quarto.yml', buildNav(st.nav, st.pub), '메뉴 바꾸기 (탭 관리)');
+      }).then(function () {
+        if (!privChanged) return;
+        var list = st.priv.map(function (t) { return { key: t.key, name: t.name.trim() }; });
+        return ghPut(PDIR + 'tabs.json', JSON.stringify(list, null, 2) + '\n', '비공개 탭 목록 바꾸기').then(function () {
+          set(TABS_CACHE, JSON.stringify(list)); renderPrivateNav(list);
+        });
+      }).then(function () {
+        st.pub.forEach(function (t) { delete t.isNew; }); st.priv.forEach(function (t) { delete t.isNew; });
+        st.origPub = JSON.stringify(st.pub); st.origPriv = JSON.stringify(st.priv);
+        st.dirty = false; btn.disabled = false; draw('pub'); draw('priv');
+        status.textContent = '적용했어요!' + (privChanged ? ' 비공개 탭은 바로 바뀌었어요.' : '') + (pubChanged ? ' 공개 탭은 2~3분 뒤 새로고침하면 보여요.' : '');
+      }).catch(function (e) { btn.disabled = false; fail(e, '저장하지'); });
+    });
+
+    load();
+  }
+
+  /* ---------- Setting 탭: 공개 페이지와 My page 색·글씨체 ---------- */
+  function refreshMeTheme() {
+    ghGet(PDIR + 'me-theme.json').then(function (f) {
+      if (!f) return;
+      var t = JSON.parse(f.text);
+      if (JSON.stringify(t) !== JSON.stringify(meTheme())) { set(ME_THEME, JSON.stringify(t)); applyMe(t); }
+    }).catch(function () {});
+  }
+  function themeCss(t) {
+    var v = themeVars(t);
+    return '/* theme: ' + JSON.stringify(t) + ' */\n' +
+      '/* Setting 탭에서 만든 파일이에요. 직접 고치지 말고 홈페이지 Setting 탭에서 바꿔 주세요. */\n' +
+      "@import url('" + fontsUrl([t.head, t.body]) + "');\n:root {\n" +
+      Object.keys(v).map(function (k) { return '  ' + k + ': ' + v[k] + ';'; }).join('\n') + '\n}\n';
+  }
+  function parseThemeCss(css) {
+    var m = css && css.match(/\/\* theme: (\{.*?\}) \*\//);
+    try { return m ? JSON.parse(m[1]) : null; } catch (e) { return null; }
+  }
+
+  var fontCheckCache = {};
+  function checkFont(name) {
+    if (fontCheckCache[name]) return fontCheckCache[name];
+    fontCheckCache[name] = new Promise(function (resolve) {
+      var l = document.createElement('link'); l.rel = 'stylesheet'; l.href = fontsUrl([name]);
+      var t = setTimeout(function () { resolve({ ok: false, timeout: true }); }, 8000);
+      l.onerror = function () { clearTimeout(t); l.remove(); resolve({ ok: false }); };
+      l.onload = function () {
+        clearTimeout(t);
+        document.fonts.load('16px "' + name + '"', '가나다').then(function (ko) {
+          resolve({ ok: true, korean: ko.length > 0 });
+        }, function () { resolve({ ok: true, korean: false }); });
+      };
+      document.head.appendChild(l);
+    });
+    return fontCheckCache[name];
+  }
+
+  function renderSettings(el) {
+    el.innerHTML =
+      '<div class="st-token" hidden><div class="pv-box"><p><b>처음 한 번만</b> 깃허브 열쇠(토큰)를 넣어 주세요. 이 브라우저에만 저장돼요.</p>' + TOKEN_HELP +
+        '<div class="ed-row"><input type="password" class="st-token-in" placeholder="github_pat_로 시작하는 글자"><button type="button" class="st-token-save">저장</button></div></div></div>' +
+      '<section class="st-sec"><h2>탭</h2><p class="st-tip">공개 탭과 비공개 탭의 순서, 이름, 추가, 삭제를 바꿔요.</p>' +
+        '<button type="button" class="st-btn st-tabs">탭 관리 열기</button></section>' +
+      '<div class="st-scope" data-scope="me"></div>' +
+      '<div class="st-scope" data-scope="pub"></div>' +
+      '<section class="st-sec"><h2>쓸 수 있는 글씨체</h2>' +
+        '<p class="st-tip">모두 구글 폰트라 상업적으로 써도 되고, 다른 사람 화면에서도 똑같이 보여요. 불러오지 못한 글씨체는 목록에서 빠져요. 이 목록에 없어도 구글 폰트에 있는 이름이면 위 칸에 직접 써서 쓸 수 있어요.</p>' +
+        '<div class="st-fonts"></div></section>';
+    el.querySelector('.st-tabs').addEventListener('click', openTabs);
+
+    var forms = {};
+    var datalist = document.createElement('datalist'); datalist.id = 'st-font-names';
+    datalist.innerHTML = FONT_LIST.map(function (f) { return '<option value="' + f[0] + '">' + f[1] + '</option>'; }).join('');
+    el.appendChild(datalist);
+
+    var fontsBox = el.querySelector('.st-fonts');
+    FONT_LIST.forEach(function (f) {
+      checkFont(f[0]).then(function (r) {
+        if (!r.ok) return;
+        var c = document.createElement('div'); c.className = 'st-font';
+        c.innerHTML = '<span class="st-font-sample" style="font-family:' + "'" + f[0] + "'" + '">가나다 Aa</span>' +
+          '<span class="st-font-name">' + f[0] + ' · ' + f[1] + '</span>';
+        fontsBox.appendChild(c);
+      });
+    });
+
+    function needToken(next) {
+      if (get(TOKEN)) return next();
+      var box = el.querySelector('.st-token'); box.hidden = false; box.scrollIntoView({ behavior: 'smooth' });
+      el.querySelector('.st-token-save').onclick = function () {
+        var v = el.querySelector('.st-token-in').value.trim(); if (!v) return;
+        set(TOKEN, v); box.hidden = true; next();
+      };
+    }
+
+    function makeForm(scope, initial) {
+      var box = el.querySelector('.st-scope[data-scope="' + scope + '"]');
+      var cur = JSON.parse(JSON.stringify(initial)), saved = JSON.parse(JSON.stringify(initial));
+      var def = scope === 'me' ? ME_DEFAULT : PUBLIC_DEFAULT;
+      box.innerHTML =
+        '<section class="st-sec"><h2>' + (scope === 'me' ? 'My page <small>나만 보는 모드의 모습</small>' : '공개 페이지 <small>다른 사람이 보는 모습</small>') + '</h2>' +
+        '<p class="st-tip">' + (scope === 'me' ? '고르면 지금 이 화면에 바로 미리 보여요. 적용하면 내 모든 기기에 똑같이 보여요.' : '아래 미리보기 상자에서 확인하고, 적용하면 2~3분 뒤 모든 사람에게 보여요.') + '</p>' +
+        '<div class="st-presets"></div>' +
+        '<div class="st-body"><div class="st-fields">' +
+          ['bg|배경색', 'text|글씨 색', 'accent|포인트 색'].map(function (x) {
+            var k = x.split('|')[0], lab = x.split('|')[1];
+            return '<label class="st-row"><span>' + lab + '</span><input type="color" data-c="' + k + '"><input class="st-hex" data-h="' + k + '" maxlength="7" placeholder="#000000"></label>';
+          }).join('') +
+          ['head|제목 글씨체', 'body|본문 글씨체'].map(function (x) {
+            var k = x.split('|')[0], lab = x.split('|')[1];
+            return '<label class="st-row"><span>' + lab + '</span><input class="st-font-in" data-f="' + k + '" list="st-font-names" placeholder="글씨체 이름"></label><p class="st-msg" data-m="' + k + '"></p>';
+          }).join('') +
+          '<p class="st-warn"></p>' +
+        '</div><div class="st-preview"><h3>제목 미리보기</h3><p>본문 글씨는 이렇게 보여요. The quick brown fox.</p>' +
+          '<p><a href="#" onclick="return false">포인트 색 링크</a> <span class="tag">태그</span></p><p class="st-sub">작은 설명 글씨</p></div></div>' +
+        '<div class="st-actions"><span class="st-status"></span><button type="button" class="st-btn st-default">기본값</button><button type="button" class="st-btn st-undo">되돌리기</button><button type="button" class="st-btn st-apply">적용</button></div>' +
+        '</section>';
+      var $ = function (c) { return box.querySelector(c); }, $$ = function (c) { return box.querySelectorAll(c); };
+      var pv = $('.st-preview'), status = $('.st-status');
+
+      $('.st-presets').innerHTML = PRESETS.map(function (p, i) {
+        return '<button type="button" class="st-chip" data-i="' + i + '" style="background:' + p.bg + ';color:' + p.text + ';border-color:' + p.accent + '"><i style="background:' + p.accent + '"></i>' + p.n + '</button>';
+      }).join('');
+
+      function paint() {
+        ['bg', 'text', 'accent'].forEach(function (k) {
+          var c = box.querySelector('[data-c="' + k + '"]'), h = box.querySelector('[data-h="' + k + '"]');
+          c.value = cur[k].toLowerCase(); if (document.activeElement !== h) h.value = cur[k].toUpperCase();
+        });
+        ['head', 'body'].forEach(function (k) { var f = box.querySelector('[data-f="' + k + '"]'); if (document.activeElement !== f) f.value = cur[k]; });
+        applyVars(pv, cur); loadFonts('st-font-' + scope, [cur.head, cur.body]);
+        pv.style.background = cur.bg; pv.style.color = cur.text;
+        if (scope === 'me') applyMe(cur);
+        var cr = contrast(cur.text, cur.bg);
+        $('.st-warn').textContent = cr < 4.5 ? '글씨 색과 배경색 차이가 작아서 글이 잘 안 읽힐 수 있어요 (대비 ' + cr.toFixed(1) + ' : 1, 4.5 이상 권장).' : '';
+        var dirty = JSON.stringify(cur) !== JSON.stringify(saved);
+        $('.st-undo').disabled = !dirty; $('.st-apply').disabled = !dirty;
+        if (dirty) status.textContent = '미리보기 중이에요. 적용해야 저장돼요.';
+      }
+
+      $$('.st-chip').forEach(function (b) {
+        b.addEventListener('click', function () { var p = PRESETS[+b.getAttribute('data-i')]; cur.bg = p.bg; cur.text = p.text; cur.accent = p.accent; paint(); });
+      });
+      $$('[data-c]').forEach(function (c) { c.addEventListener('input', function () { cur[c.getAttribute('data-c')] = c.value.toUpperCase(); paint(); }); });
+      $$('[data-h]').forEach(function (h) {
+        h.addEventListener('input', function () {
+          var v = h.value.trim(); if (v && v[0] !== '#') v = '#' + v;
+          if (/^#[0-9a-fA-F]{3}$/.test(v)) v = '#' + v[1] + v[1] + v[2] + v[2] + v[3] + v[3];
+          h.classList.toggle('st-bad', !hexOk(v));
+          if (hexOk(v)) { cur[h.getAttribute('data-h')] = v.toUpperCase(); paint(); }
+        });
+        h.addEventListener('blur', function () { h.classList.remove('st-bad'); paint(); });
+      });
+      $$('[data-f]').forEach(function (f) {
+        var k = f.getAttribute('data-f'), msg = box.querySelector('[data-m="' + k + '"]');
+        function tryFont() {
+          var name = f.value.trim().replace(/\s+/g, ' ');
+          if (!name || name === cur[k]) { f.value = cur[k]; msg.textContent = ''; return; }
+          msg.textContent = '확인하는 중…'; msg.className = 'st-msg';
+          checkFont(name).then(function (r) {
+            if (!r.ok) {
+              msg.textContent = r.timeout ? '글씨체를 불러오지 못했어요. 인터넷 연결을 확인해 주세요.' : '"' + name + '"은(는) 구글 폰트에 없는 이름이에요. 대소문자와 띄어쓰기까지 정확히 써 주세요.';
+              msg.className = 'st-msg st-bad-msg'; f.value = cur[k]; return;
+            }
+            cur[k] = name; f.value = name;
+            msg.textContent = r.korean ? '' : '한글이 없는 글씨체예요. 한글은 기본 글씨체로 보여요.';
+            paint();
+          });
+        }
+        f.addEventListener('change', tryFont);
+        f.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); f.blur(); } });
+      });
+      $('.st-undo').addEventListener('click', function () { cur = JSON.parse(JSON.stringify(saved)); status.textContent = '저장된 상태로 돌아왔어요.'; paint(); });
+      $('.st-default').addEventListener('click', function () { cur = JSON.parse(JSON.stringify(def)); paint(); });
+      $('.st-apply').addEventListener('click', function () {
+        needToken(function () {
+          var btn = $('.st-apply'); btn.disabled = true; status.textContent = '저장하는 중…';
+          var t = { bg: cur.bg, text: cur.text, accent: cur.accent, head: cur.head, body: cur.body };
+          var job = scope === 'me'
+            ? ghPut(PDIR + 'me-theme.json', JSON.stringify(t, null, 2) + '\n', 'My page 색·글씨체 바꾸기').then(function () { set(ME_THEME, JSON.stringify(t)); })
+            : ghPut('site-theme.css', themeCss(t), '공개 페이지 색·글씨체 바꾸기');
+          job.then(function () {
+            saved = JSON.parse(JSON.stringify(t)); paint();
+            status.textContent = scope === 'me' ? '적용했어요! 내 모든 기기에 이 모습으로 보여요.' : '적용했어요! 2~3분 뒤 다른 사람에게도 이 모습으로 보여요.';
+          }).catch(function (e) {
+            btn.disabled = false;
+            if (e.message === 'auth') { del(TOKEN); status.textContent = '토큰이 맞지 않거나 기한이 지났어요. 다시 적용을 누르고 새 토큰을 넣어 주세요.'; }
+            else status.textContent = '저장하지 못했어요 (' + e.message + '). 잠시 뒤 다시 눌러 주세요.';
+          });
+        });
+      });
+      paint(); status.textContent = '';
+      forms[scope] = { reset: function (t) { cur = JSON.parse(JSON.stringify(t)); saved = JSON.parse(JSON.stringify(t)); paint(); status.textContent = ''; } };
+    }
+
+    makeForm('me', meTheme());
+    makeForm('pub', PUBLIC_DEFAULT);
+    ghGet('site-theme.css').then(function (f) { var t = f && parseThemeCss(f.text); if (t) forms.pub.reset(t); }).catch(function () {});
+  }
+
+  // 모든 함수와 값이 준비된 뒤에 시작해요
+  document.addEventListener('DOMContentLoaded', init);
+  if (document.readyState !== 'loading') init();
 })();
 </script>
 <script id="quarto-html-after-body" type="application/javascript">

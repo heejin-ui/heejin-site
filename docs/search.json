@@ -49,6 +49,13 @@
     "text": "나만 볼 수 있는 페이지예요."
   },
   {
+    "objectID": "private/settings.html",
+    "href": "private/settings.html",
+    "title": "Setting",
+    "section": "",
+    "text": "나만 볼 수 있는 페이지예요."
+  },
+  {
     "objectID": "publications.html",
     "href": "publications.html",
     "title": "Publications",
@@ -159,6 +166,13 @@
     "title": "Projects",
     "section": "[Next project]",
     "text": "[Next project]\n[Short description]"
+  },
+  {
+    "objectID": "private/tab.html",
+    "href": "private/tab.html",
+    "title": "비공개",
+    "section": "",
+    "text": "나만 볼 수 있는 페이지예요."
   },
   {
     "objectID": "private/schools.html",
