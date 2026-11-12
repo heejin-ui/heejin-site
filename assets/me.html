@@ -1,6 +1,8 @@
 <script>
 (function () {
   var KEY = 'hj-me', THEME = 'hj-theme', FONT = 'hj-font';
+  // 깃허브 저장소 이름. 저장소 이름이나 아이디를 바꾸면 여기도 바꿔 주세요.
+  var REPO = 'heejin-ui/heejin-site';
   function get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
   function set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
   function del(k) { try { localStorage.removeItem(k); } catch (e) {} }
@@ -97,6 +99,21 @@
       '<button class="me-btn" data-open="color">오늘의 색</button>' +
       '<button class="me-btn" data-open="font">글씨체</button>';
     document.body.appendChild(box);
+
+    // 이 페이지 수정: 공개 페이지는 깃허브 편집 화면으로 연결 (비공개 탭은 구글 문서 버튼을 써요)
+    var here = location.href.split('#')[0].split('?')[0];
+    if (here.indexOf(root) === 0) {
+      var rel = here.slice(root.length);
+      if (rel === '' || /\/$/.test(rel)) rel += 'index.html';
+      if (/\.html$/.test(rel) && rel.indexOf('private/') !== 0) {
+        var ed = document.createElement('a');
+        ed.className = 'me-edit';
+        ed.href = 'https://github.com/' + REPO + '/edit/main/' + rel.replace(/\.html$/, '.qmd');
+        ed.target = '_blank'; ed.rel = 'noopener';
+        ed.textContent = '이 페이지 수정';
+        box.appendChild(ed);
+      }
+    }
     var panel = box.querySelector('#me-panel'), mode = null;
 
     box.querySelectorAll('.me-btn').forEach(function (btn) {

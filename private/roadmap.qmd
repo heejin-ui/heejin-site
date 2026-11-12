@@ -1,0 +1,12 @@
+---
+title: "Roadmap"
+subtitle: "2028년 9월 박사 입학까지"
+---
+
+<!-- 내용은 구글 문서에 있어요. 이 파일에는 문서 주소만 들어 있어요. -->
+
+<div class="doc-box">
+<a class="doc-open" href="https://docs.google.com/document/d/16CXJ22OAyGeEeb4Fb4kIpkhsyi6i3cQrE0gf1OwitFA/edit" target="_blank" rel="noopener">구글 문서에서 열고 고치기</a>
+<p class="doc-hint">아래에 문서가 안 보이면 위 버튼을 눌러 주세요. 고친 내용은 구글 문서에 바로 저장돼요.</p>
+<iframe class="doc-frame" src="https://docs.google.com/document/d/16CXJ22OAyGeEeb4Fb4kIpkhsyi6i3cQrE0gf1OwitFA/edit?rm=minimal" title="Roadmap" loading="lazy"></iframe>
+</div>

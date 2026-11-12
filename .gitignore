@@ -1,7 +1,7 @@
-# 내 화면 전용 글의 원본은 깃허브에 올리지 않아요
-private/*.qmd
-
 # 쿼토 임시 파일
 /.quarto/
 
-**/*.quarto_ipynb
+# 맥과 RStudio가 자동으로 만드는 파일
+.DS_Store
+.Rhistory
+.Rproj.user/
