@@ -1,12 +1,12 @@
-/* theme: {"bg":"#FBF7F3","text":"#3A2A22","accent":"#B5562E","head":"Nanum Myeongjo","body":"Noto Sans KR"} */
+/* theme: {"bg":"#FFFFFF","text":"#222222","accent":"#555555","head":"Nanum Myeongjo","body":"Noto Sans KR"} */
 /* Setting 탭에서 만든 파일이에요. 직접 고치지 말고 홈페이지 Setting 탭에서 바꿔 주세요. */
 @import url('https://fonts.googleapis.com/css2?family=Nanum+Myeongjo&family=Noto+Sans+KR&display=swap');
 :root {
-  --site-bg: #FBF7F3;
-  --site-text: #3A2A22;
-  --site-accent: #B5562E;
-  --site-soft: #f0ddd3;
-  --site-sub: #837871;
+  --site-bg: #FFFFFF;
+  --site-text: #222222;
+  --site-accent: #555555;
+  --site-soft: #e4e4e4;
+  --site-sub: #767676;
   --font-head: 'Nanum Myeongjo', 'Noto Serif KR', serif;
   --font-body: 'Noto Sans KR', 'Noto Sans KR', sans-serif;
 }
