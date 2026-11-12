@@ -1,6 +1,9 @@
 project:
   type: website
   output-dir: docs
+  resources:
+    - manifest.webmanifest
+    - "icons/*.png"
 
 website:
   title: "Heejin Roh"
