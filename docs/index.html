@@ -224,6 +224,7 @@ ul.task-list li input[type="checkbox"] {
   var theme = PRESETS[2], fontIdx = 0;
   try { var st = JSON.parse(get(THEME)); if (st && st.bg && st.ac) theme = st; } catch (e) {}
   var sf = parseInt(get(FONT), 10); if (!isNaN(sf)) fontIdx = sf;
+  var savedTheme = theme, savedFont = fontIdx;
   applyTheme(theme); applyFont(fontIdx);
 
   document.addEventListener('DOMContentLoaded', init);
@@ -262,7 +263,34 @@ ul.task-list li input[type="checkbox"] {
       });
     });
 
-    function draw() {
+    function dirty() {
+      return theme.bg !== savedTheme.bg || theme.ac !== savedTheme.ac || fontIdx !== savedFont;
+    }
+    function actions(msg) {
+      var d = dirty();
+      return '<div class="me-actions">' +
+        '<span class="me-status">' + (msg || (d ? '미리보기 중이에요. 저장해야 다음에도 유지돼요.' : '저장된 상태예요.')) + '</span>' +
+        '<button class="me-undo"' + (d ? '' : ' disabled') + '>되돌리기</button>' +
+        '<button class="me-save"' + (d ? '' : ' disabled') + '>저장</button></div>';
+    }
+    function bindActions() {
+      panel.querySelector('.me-save').addEventListener('click', function () {
+        set(THEME, JSON.stringify(theme)); set(FONT, String(fontIdx));
+        savedTheme = theme; savedFont = fontIdx;
+        draw('저장했어요!');
+      });
+      panel.querySelector('.me-undo').addEventListener('click', function () {
+        theme = savedTheme; fontIdx = savedFont;
+        applyTheme(theme); applyFont(fontIdx); draw('저장된 색과 글씨체로 돌아왔어요.');
+      });
+    }
+    function refreshActions() {
+      var old = panel.querySelector('.me-actions');
+      var tmp = document.createElement('div'); tmp.innerHTML = actions();
+      old.replaceWith(tmp.firstChild); bindActions();
+    }
+
+    function draw(msg) {
       if (mode === 'color') {
         var html = '<p>정해둔 색</p><div class="row">';
         PRESETS.forEach(function (p, i) {
@@ -273,31 +301,31 @@ ul.task-list li input[type="checkbox"] {
           '<label>강조색 <input type="color" id="me-ac" value="' + theme.ac + '"></label>' +
           '<label>바탕색 <input type="color" id="me-bg" value="' + theme.bg + '"></label>' +
           '<label><input type="checkbox" id="me-auto" checked> 바탕색 자동</label></div>';
-        panel.innerHTML = html;
+        panel.innerHTML = html + actions(msg);
         panel.querySelectorAll('.dot').forEach(function (d) {
-          d.addEventListener('click', function () { theme = PRESETS[+d.getAttribute('data-i')]; save(); draw(); });
+          d.addEventListener('click', function () { theme = PRESETS[+d.getAttribute('data-i')]; applyTheme(theme); draw(); });
         });
         panel.querySelector('#me-ac').addEventListener('input', function (e) {
           var bg = panel.querySelector('#me-auto').checked ? lightBg(e.target.value) : theme.bg;
           theme = { n: '직접 고른 색', ac: e.target.value, bg: bg };
-          panel.querySelector('#me-bg').value = bg; save();
+          panel.querySelector('#me-bg').value = bg; applyTheme(theme); refreshActions();
         });
         panel.querySelector('#me-bg').addEventListener('input', function (e) {
           panel.querySelector('#me-auto').checked = false;
-          theme = { n: '직접 고른 색', ac: theme.ac, bg: e.target.value }; save();
+          theme = { n: '직접 고른 색', ac: theme.ac, bg: e.target.value }; applyTheme(theme); refreshActions();
         });
       } else {
         var h = '<p>글씨체</p>';
         FONTS.forEach(function (f, i) {
           h += '<button class="font-opt' + (i === fontIdx ? ' on' : '') + '" data-i="' + i + '" style="font-family:' + f.h.replace(/"/g, "'") + '">' + f.n + '</button>';
         });
-        panel.innerHTML = h;
+        panel.innerHTML = h + actions(msg);
         panel.querySelectorAll('.font-opt').forEach(function (b) {
-          b.addEventListener('click', function () { fontIdx = +b.getAttribute('data-i'); applyFont(fontIdx); set(FONT, String(fontIdx)); draw(); });
+          b.addEventListener('click', function () { fontIdx = +b.getAttribute('data-i'); applyFont(fontIdx); draw(); });
         });
       }
+      bindActions();
     }
-    function save() { applyTheme(theme); set(THEME, JSON.stringify(theme)); }
   }
 })();
 </script>
