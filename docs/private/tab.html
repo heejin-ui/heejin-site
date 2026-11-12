@@ -489,7 +489,7 @@ ul.task-list li input[type="checkbox"] {
             '<button type="button" data-t="b">굵게</button><button type="button" data-t="i">기울임</button>' +
             '<button type="button" data-t="ul">목록</button><button type="button" data-t="a">링크</button>' +
             (o.kind === 'enc' ? '<button type="button" data-t="sub">세부 탭 추가</button>' : '') +
-            '<button type="button" data-t="file">파일 불러오기</button><input type="file" class="ed-file" accept=".md,.txt,.qmd" hidden>' +
+            '<button type="button" data-t="file" title="파일을 편집 창 위로 끌어다 놓아도 돼요">파일 불러오기</button><input type="file" class="ed-file" accept=".md,.txt,.qmd" hidden>' +
             '<span class="ed-tip">' + (o.kind === 'enc' ? '# 이름 줄마다 세부 탭이 생겨요' : '왼쪽에 쓰면 오른쪽에 바로 보여요') + '</span></div>' +
           '<div class="ed-split"><textarea class="ed-text" spellcheck="false"></textarea><div class="ed-preview"></div></div>' +
           '<div class="ed-foot"><span class="ed-status"></span>' +
@@ -543,10 +543,25 @@ ul.task-list li input[type="checkbox"] {
         }
       });
     });
-    $('.ed-file').addEventListener('change', function (e) {
-      var f = e.target.files[0]; if (!f) return;
-      if (ta.value.trim() && !confirm('지금 쓴 내용을 파일 내용으로 바꿀까요?')) { e.target.value = ''; return; }
-      f.text().then(function (t) { ta.value = splitFront(t.replace(/\r/g, '')).body; markDirty(); e.target.value = ''; });
+    function loadFile(f) {
+      if (!f) return;
+      if (!/\.(md|txt|qmd|markdown)$/i.test(f.name)) { status.textContent = '.md, .txt 같은 글 파일만 불러올 수 있어요.'; return; }
+      if (ta.value.trim() && !confirm('지금 쓴 내용을 "' + f.name + '" 내용으로 바꿀까요?')) return;
+      f.text().then(function (t) { ta.value = splitFront(t.replace(/\r/g, '')).body; markDirty(); status.textContent = '"' + f.name + '"을(를) 불러왔어요. 적용을 눌러야 저장돼요.'; });
+    }
+    $('.ed-file').addEventListener('change', function (e) { loadFile(e.target.files[0]); e.target.value = ''; });
+
+    // 파일을 편집 창 위로 끌어다 놓아도 불러와요
+    var card = $('.ed-card'), dragDepth = 0;
+    function hasFiles(e) { return e.dataTransfer && Array.prototype.indexOf.call(e.dataTransfer.types || [], 'Files') >= 0; }
+    wrap.addEventListener('dragenter', function (e) { if (!hasFiles(e)) return; e.preventDefault(); dragDepth++; card.classList.add('ed-dropping'); });
+    wrap.addEventListener('dragover', function (e) { if (!hasFiles(e)) return; e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; });
+    wrap.addEventListener('dragleave', function (e) { if (!hasFiles(e)) return; dragDepth = Math.max(0, dragDepth - 1); if (!dragDepth) card.classList.remove('ed-dropping'); });
+    wrap.addEventListener('drop', function (e) {
+      if (!hasFiles(e)) return;
+      e.preventDefault(); dragDepth = 0; card.classList.remove('ed-dropping');
+      if ($('.ed-main').hidden) return;
+      loadFile(e.dataTransfer.files[0]);
     });
 
     function showSetup(msg) { $('.ed-setup').hidden = false; $('.ed-main').hidden = true; if (msg) $('.ed-setup-msg').innerHTML = msg; }
