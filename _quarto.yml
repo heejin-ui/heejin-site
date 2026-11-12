@@ -25,7 +25,9 @@ website:
 format:
   html:
     theme: cosmo
-    css: styles.css
+    css:
+      - styles.css
+      - site-theme.css
     toc: false
     include-in-header: assets/fonts.html
     include-after-body: assets/me.html
