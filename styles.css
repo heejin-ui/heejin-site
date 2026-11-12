@@ -655,3 +655,11 @@ li.task-done, li.task-done .pl-title { text-decoration: line-through; color: var
 li.pl-item.task-done { text-decoration: none; }
 li.pl-item.task-done .pl-g, li.pl-item.task-done .pl-del, li.pl-item.task-done .pl-time { text-decoration: none; }
 @media (max-width: 700px) { .cal-prog { display: none; } }
+
+/* Setting → 앱 */
+#me-settings .app-prev { display: inline-flex; flex-direction: column; align-items: center; gap: 6px; padding: 18px 26px; border-radius: 18px; background: linear-gradient(160deg, #e9e4f5, #f8e8ef); }
+#me-settings .app-canvas { width: 90px; height: 90px; border-radius: 20px; box-shadow: 0 4px 14px rgba(0,0,0,.18); }
+#me-settings .app-name { font-size: 12px; color: #333; }
+#me-settings .app-link { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--site-soft); font-size: 14px; }
+#me-settings select.st-font-in { height: 34px; }
+#me-settings [hidden] { display: none !important; }

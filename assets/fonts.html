@@ -1,3 +1,24 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nanum+Myeongjo:wght@400;700&family=Noto+Sans+KR:wght@400;500&family=Gowun+Batang:wght@400;700&family=Gowun+Dodum&family=Nanum+Pen+Script&family=Jua&display=swap">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Heejin">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<script>
+/* 홈 화면 앱: 어느 페이지에서든 아이콘과 앱 설정 파일을 찾을 수 있게 연결해요 */
+(function () {
+  function root() {
+    var m = document.querySelector('meta[name="quarto:offset"]');
+    if (m) return new URL(m.getAttribute('content') || './', location.href).href;
+    return location.href.split('#')[0].split('?')[0].replace(/(private|notes)\/[^\/]*$/, '').replace(/[^\/]*$/, '');
+  }
+  function add() {
+    var r = root(), v = '?v=3';
+    [['manifest', 'manifest.webmanifest'], ['apple-touch-icon', 'icons/icon-180.png' + v], ['icon', 'icons/icon-192.png' + v]].forEach(function (x) {
+      var l = document.createElement('link'); l.rel = x[0]; l.href = r + x[1]; document.head.appendChild(l);
+    });
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', add); else add();
+})();
+</script>
