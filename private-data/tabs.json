@@ -30,5 +30,15 @@
   {
     "key": "pmwdszzcb",
     "name": "자가면역질환"
+  },
+  {
+    "key": "pmwdu3k7u",
+    "name": "달력",
+    "type": "calendar"
+  },
+  {
+    "key": "pmwdu3ed8",
+    "name": "할 일",
+    "type": "todo"
   }
 ]
