@@ -567,3 +567,14 @@ pre.md-code { background: #fff; border: 1px solid var(--site-soft); border-radiu
 #me-ask .ask-row select { flex: 0 1 200px; }
 #me-tools .me-ask-btn { background: var(--site-accent); color: #fff; text-decoration: none; display: inline-block; font-size: 14px; }
 @media (max-width: 800px) { #me-ask .ask-groups { grid-template-columns: 1fr; } }
+
+/* 편집 창에 파일 끌어다 놓기 */
+#me-editor .ed-card { position: relative; }
+#me-editor .ed-card.ed-dropping::after {
+  content: "여기에 놓으면 파일을 불러와요";
+  position: absolute; inset: 10px; z-index: 5;
+  display: flex; align-items: center; justify-content: center;
+  border: 3px dashed var(--site-accent); border-radius: 12px;
+  background: color-mix(in srgb, var(--site-bg) 85%, transparent);
+  color: var(--site-accent); font-size: 18px; font-weight: 600; pointer-events: none;
+}
