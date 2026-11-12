@@ -1,5 +1,19 @@
 [
   {
+    "objectID": "notes.html",
+    "href": "notes.html",
+    "title": "Notes",
+    "section": "",
+    "text": "Prejudice reduction: What works?\n\n\n\nPaluck & Green, Annual Review of Psychology, 2009\n\n\n\n\n\n\nNov 2, 2026\n\n\n\n\n\nNo matching items"
+  },
+  {
+    "objectID": "index.html",
+    "href": "index.html",
+    "title": "Heejin Roh",
+    "section": "",
+    "text": "I want to help build a society where people don’t hold prejudices about each other, where everyone can say, “That’s okay, even if you’re different from me.”\n\nI am a master’s student in epidemiology. I study how childhood family environments shape adolescent mental health, and I am interested in how stigma and social connection affect depression, social anxiety, and autism.\nChildhood adversity Stigma Social cognition Longitudinal methods\nRead about my research →"
+  },
+  {
     "objectID": "research.html",
     "href": "research.html",
     "title": "Research",
@@ -28,9 +42,30 @@
     "text": "Skills\n\nR\n[Add other skills as you learn them]"
   },
   {
-    "objectID": "private/ask.html",
-    "href": "private/ask.html",
-    "title": "Ask Claude",
+    "objectID": "notes/prejudice-reduction.html",
+    "href": "notes/prejudice-reduction.html",
+    "title": "Prejudice reduction: What works?",
+    "section": "",
+    "text": "Paluck, E. L., & Green, D. P. (2009). Prejudice reduction: What works? A review and assessment of research and practice. Annual Review of Psychology, 60, 339–367."
+  },
+  {
+    "objectID": "notes/prejudice-reduction.html#what-it-says",
+    "href": "notes/prejudice-reduction.html#what-it-says",
+    "title": "Prejudice reduction: What works?",
+    "section": "What it says",
+    "text": "What it says\n[Summarize in your own words]"
+  },
+  {
+    "objectID": "notes/prejudice-reduction.html#what-i-think",
+    "href": "notes/prejudice-reduction.html#what-i-think",
+    "title": "Prejudice reduction: What works?",
+    "section": "What I think",
+    "text": "What I think\n[Your thoughts]"
+  },
+  {
+    "objectID": "private/schools.html",
+    "href": "private/schools.html",
+    "title": "Schools",
     "section": "",
     "text": "나만 볼 수 있는 페이지예요."
   },
@@ -42,9 +77,23 @@
     "text": "나만 볼 수 있는 페이지예요."
   },
   {
-    "objectID": "private/schools.html",
-    "href": "private/schools.html",
-    "title": "Schools",
+    "objectID": "private/ask.html",
+    "href": "private/ask.html",
+    "title": "Ask Claude",
+    "section": "",
+    "text": "나만 볼 수 있는 페이지예요."
+  },
+  {
+    "objectID": "private/settings.html",
+    "href": "private/settings.html",
+    "title": "Setting",
+    "section": "",
+    "text": "나만 볼 수 있는 페이지예요."
+  },
+  {
+    "objectID": "private/reading.html",
+    "href": "private/reading.html",
+    "title": "Reading list",
     "section": "",
     "text": "나만 볼 수 있는 페이지예요."
   },
@@ -54,6 +103,48 @@
     "title": "비공개",
     "section": "",
     "text": "나만 볼 수 있는 페이지예요."
+  },
+  {
+    "objectID": "private/english.html",
+    "href": "private/english.html",
+    "title": "English",
+    "section": "",
+    "text": "나만 볼 수 있는 페이지예요."
+  },
+  {
+    "objectID": "private/myspace.html",
+    "href": "private/myspace.html",
+    "title": "My space",
+    "section": "",
+    "text": "나만 볼 수 있는 페이지예요."
+  },
+  {
+    "objectID": "contact.html",
+    "href": "contact.html",
+    "title": "Contact",
+    "section": "",
+    "text": "I’m always happy to talk about research, mental health, and building a more accepting society.\n\nEmail: heejin990130@gmail.com\nGitHub: [your GitHub page]"
+  },
+  {
+    "objectID": "publications.html",
+    "href": "publications.html",
+    "title": "Publications",
+    "section": "",
+    "text": "[Add conference presentations here]"
+  },
+  {
+    "objectID": "publications.html#presentations",
+    "href": "publications.html#presentations",
+    "title": "Publications",
+    "section": "",
+    "text": "[Add conference presentations here]"
+  },
+  {
+    "objectID": "publications.html#papers",
+    "href": "publications.html#papers",
+    "title": "Publications",
+    "section": "Papers",
+    "text": "Papers\n\n[Add papers here]"
   },
   {
     "objectID": "projects.html",
@@ -110,96 +201,5 @@
     "title": "CV",
     "section": "Skills",
     "text": "Skills\n\nR\n[Add more]"
-  },
-  {
-    "objectID": "notes.html",
-    "href": "notes.html",
-    "title": "Notes",
-    "section": "",
-    "text": "Prejudice reduction: What works?\n\n\n\nPaluck & Green, Annual Review of Psychology, 2009\n\n\n\n\n\n\nNov 2, 2026\n\n\n\n\n\nNo matching items"
-  },
-  {
-    "objectID": "notes/prejudice-reduction.html",
-    "href": "notes/prejudice-reduction.html",
-    "title": "Prejudice reduction: What works?",
-    "section": "",
-    "text": "Paluck, E. L., & Green, D. P. (2009). Prejudice reduction: What works? A review and assessment of research and practice. Annual Review of Psychology, 60, 339–367."
-  },
-  {
-    "objectID": "notes/prejudice-reduction.html#what-it-says",
-    "href": "notes/prejudice-reduction.html#what-it-says",
-    "title": "Prejudice reduction: What works?",
-    "section": "What it says",
-    "text": "What it says\n[Summarize in your own words]"
-  },
-  {
-    "objectID": "notes/prejudice-reduction.html#what-i-think",
-    "href": "notes/prejudice-reduction.html#what-i-think",
-    "title": "Prejudice reduction: What works?",
-    "section": "What I think",
-    "text": "What I think\n[Your thoughts]"
-  },
-  {
-    "objectID": "contact.html",
-    "href": "contact.html",
-    "title": "Contact",
-    "section": "",
-    "text": "I’m always happy to talk about research, mental health, and building a more accepting society.\n\nEmail: heejin990130@gmail.com\nGitHub: [your GitHub page]"
-  },
-  {
-    "objectID": "publications.html",
-    "href": "publications.html",
-    "title": "Publications",
-    "section": "",
-    "text": "[Add conference presentations here]"
-  },
-  {
-    "objectID": "publications.html#presentations",
-    "href": "publications.html#presentations",
-    "title": "Publications",
-    "section": "",
-    "text": "[Add conference presentations here]"
-  },
-  {
-    "objectID": "publications.html#papers",
-    "href": "publications.html#papers",
-    "title": "Publications",
-    "section": "Papers",
-    "text": "Papers\n\n[Add papers here]"
-  },
-  {
-    "objectID": "private/settings.html",
-    "href": "private/settings.html",
-    "title": "Setting",
-    "section": "",
-    "text": "나만 볼 수 있는 페이지예요."
-  },
-  {
-    "objectID": "private/reading.html",
-    "href": "private/reading.html",
-    "title": "Reading list",
-    "section": "",
-    "text": "나만 볼 수 있는 페이지예요."
-  },
-  {
-    "objectID": "private/english.html",
-    "href": "private/english.html",
-    "title": "English",
-    "section": "",
-    "text": "나만 볼 수 있는 페이지예요."
-  },
-  {
-    "objectID": "private/myspace.html",
-    "href": "private/myspace.html",
-    "title": "My space",
-    "section": "",
-    "text": "나만 볼 수 있는 페이지예요."
-  },
-  {
-    "objectID": "index.html",
-    "href": "index.html",
-    "title": "Heejin Roh",
-    "section": "",
-    "text": "I want to help build a society where people don’t hold prejudices about each other, where everyone can say, “That’s okay, even if you’re different from me.”\n\nI am a master’s student in epidemiology. I study how childhood family environments shape adolescent mental health, and I am interested in how stigma and social connection affect depression, social anxiety, and autism.\nChildhood adversity Stigma Social cognition Longitudinal methods\nRead about my research →"
   }
 ]
