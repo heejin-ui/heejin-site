@@ -374,6 +374,7 @@ ul.task-list li input[type="checkbox"] {
     t = t.replace(/\[([^\]]+)\]\{\.([\w-]+)\}/g, '<span class="$2">$1</span>');
     t = t.replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, function (m, a, u) { return '<a href="' + u.replace(/\.qmd$/, '.html') + '">' + a + '</a>'; });
     t = t.replace(/(^|[\s(])(https?:\/\/[^\s<)]+)/g, '$1<a href="$2" target="_blank" rel="noopener">$2</a>');
+    t = t.replace(/\u0000T(\d+)([01])\u0000\s?/g, function (m, k, d) { return '<input type="checkbox" class="task-cb" data-line="' + k + '"' + (d === '1' ? ' checked' : '') + '>'; });
     return t;
   }
   function md(src) {
@@ -633,8 +634,42 @@ ul.task-list li input[type="checkbox"] {
   }
 
   /* 비공개 탭: 비밀번호로 열고, 같은 편집 창으로 고치기 */
+  var TASK_RE = /^(\s*[-*]\s+)(\[ \]|\[[xX]\]|☐|☑)(\s+)(.*)$/;
+  function prepTasks(src) {
+    var fence = false;
+    return src.split('\n').map(function (l, k) {
+      if (/^```/.test(l)) fence = !fence;
+      var m = !fence && l.match(TASK_RE);
+      return m ? m[1] + '\u0000T' + k + (/x|☑/i.test(m[2]) ? 1 : 0) + '\u0000 ' + m[4] : l;
+    }).join('\n');
+  }
+
   function privateInit(el, pkey, label, box) {
     var keyFile = null, key = null, body = '', btnAdded = false;
+    var tabInfo = {}, ttype = 'doc', planner = false, storeKey = pkey;
+    function setType(list) {
+      tabInfo = list.filter(function (t) { return t.key === pkey; })[0] || {};
+      ttype = tabInfo.type || 'doc';
+      planner = ttype === 'todo' || ttype === 'calendar';
+      storeKey = planner ? 'planner' : pkey;
+      var h1 = document.querySelector('h1.title');
+      if (tabInfo.name && h1) { h1.textContent = tabInfo.name; document.title = tabInfo.name; label = tabInfo.name; }
+    }
+    setType(privateTabs());
+    var saving = Promise.resolve(), saveTimer = null, saveEl = null;
+    function setSave(t) { if (saveEl) saveEl.textContent = t; }
+    function persist(text) {
+      return encText(key, text).then(function (o) { return ghPut(PDIR + storeKey + '.enc', JSON.stringify(o) + '\n', '비공개 탭 수정: ' + storeKey); });
+    }
+    function scheduleSave() {
+      if (!get(TOKEN)) { setSave('저장하려면 토큰이 필요해요. "이 페이지 수정"을 한 번 눌러 토큰을 넣어 주세요.'); return; }
+      clearTimeout(saveTimer); setSave('저장 대기 중…');
+      saveTimer = setTimeout(function () {
+        var snap = body;
+        saving = saving.then(function () { setSave('저장하는 중…'); return persist(snap); })
+          .then(function () { setSave('저장됨'); }, function (e) { setSave('저장하지 못했어요 (' + e.message + '). 새로고침 후 다시 해 주세요.'); });
+      }, 700);
+    }
     var ALL = privateTabs().map(function (t) { return t.key; });
 
     function msg(html) { el.innerHTML = '<div class="pv-box">' + html + '</div>'; }
@@ -715,22 +750,172 @@ ul.task-list li input[type="checkbox"] {
       });
     }
 
+    function bindTasks(root) {
+      root.querySelectorAll('.task-cb').forEach(function (cb) {
+        var li = cb.closest('li'); if (li) { li.classList.add('task'); li.classList.toggle('task-done', cb.checked); }
+        cb.addEventListener('change', function () {
+          var k = +cb.getAttribute('data-line'), lines = body.split('\n'), m = lines[k] && lines[k].match(TASK_RE);
+          if (!m) return;
+          lines[k] = m[1] + (cb.checked ? '[x]' : '[ ]') + m[3] + m[4];
+          body = lines.join('\n');
+          if (li) li.classList.toggle('task-done', cb.checked);
+          countTasks(); scheduleSave();
+        });
+      });
+    }
+    var countTasks = function () {};
+
+    function headingLines() {
+      var out = [], fence = false;
+      body.split('\n').forEach(function (l, k) { if (/^```/.test(l)) fence = !fence; if (!fence && /^#\s+/.test(l)) out.push(k); });
+      return out;
+    }
+    function addTask(text) {
+      var lines = body.split('\n'), heads = headingLines(), at = lines.length;
+      if (heads.length) {
+        var cur = 0; try { cur = parseInt(sessionStorage.getItem('hj-sub-' + pkey), 10) || 0; } catch (e) {}
+        cur = Math.min(cur, heads.length - 1);
+        at = cur + 1 < heads.length ? heads[cur + 1] : lines.length;
+      }
+      while (at > 0 && !lines[at - 1].trim() && (heads.indexOf(at - 1) < 0)) at--;
+      lines.splice(at, 0, '- [ ] ' + text);
+      body = lines.join('\n'); render(); scheduleSave();
+    }
+
     function render() {
-      if (body.trim()) { el.innerHTML = ''; var wrapB = document.createElement('div'); el.appendChild(wrapB); renderRich(body, wrapB, 'hj-sub-' + pkey); }
-      else el.innerHTML = '<p class="pv-empty">아직 내용이 없어요. 오른쪽 아래 "이 페이지 수정"을 눌러 써 보세요.</p>';
+      el.innerHTML = '';
+      saveEl = document.createElement('p'); saveEl.className = 'pv-save'; el.appendChild(saveEl);
+      if (planner) { var pBox = document.createElement('div'); el.appendChild(pBox); renderPlanner(pBox, ttype); }
+      else {
+        if (body.trim()) { var wrapB = document.createElement('div'); el.appendChild(wrapB); renderRich(prepTasks(body), wrapB, 'hj-sub-' + pkey); bindTasks(wrapB); }
+        else el.insertAdjacentHTML('beforeend', '<p class="pv-empty">아직 내용이 없어요. 오른쪽 아래 "이 페이지 수정"을 눌러 써 보세요.</p>');
+      }
       var lock = document.createElement('p'); lock.className = 'pv-lockline';
       lock.innerHTML = '<a href="#">이 기기에서 잠그기</a>';
       lock.querySelector('a').addEventListener('click', function (e) { e.preventDefault(); del(PKEY); location.reload(); });
       el.appendChild(lock);
     }
 
+    function renderPlanner(host, mode) {
+      var data = { events: [] };
+      try { var o = JSON.parse(body || '{}'); if (o && Array.isArray(o.events)) data = o; } catch (e) {}
+      data.events.forEach(function (e) { if (!e.kind) e.kind = 'event'; });
+      function save() { body = JSON.stringify(data, null, 1); scheduleSave(); }
+      var pad = function (n) { return (n < 10 ? '0' : '') + n; };
+      var ymd = function (d) { return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); };
+      var WD = ['일', '월', '화', '수', '목', '금', '토'];
+      var today = ymd(new Date());
+      var sel = today; try { sel = sessionStorage.getItem('hj-plan-sel') || today; } catch (e) {}
+      var view = new Date(sel + 'T00:00:00'); view.setDate(1);
+      function setSel(d) { sel = d; try { sessionStorage.setItem('hj-plan-sel', d); } catch (e) {} }
+      function nice(d) { var x = new Date(d + 'T00:00:00'); return (x.getMonth() + 1) + '월 ' + x.getDate() + '일 (' + WD[x.getDay()] + ')'; }
+      function shift(d, n) { var x = new Date(d + 'T00:00:00'); x.setDate(x.getDate() + n); return ymd(x); }
+      function on(day, kind) {
+        return data.events.filter(function (e) { return e.date === day && (!kind || e.kind === kind); })
+          .sort(function (a, b) { return (a.kind === 'event' ? 0 : 1) - (b.kind === 'event' ? 0 : 1) || (a.time || '99').localeCompare(b.time || '99'); });
+      }
+      function newId() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 5); }
+      function gcal(e) {
+        var d = e.date.replace(/-/g, ''), dates;
+        if (e.time) {
+          var t = e.time.replace(':', '') + '00', end = new Date(e.date + 'T' + e.time + ':00'); end.setHours(end.getHours() + 1);
+          dates = d + 'T' + t + '/' + ymd(end).replace(/-/g, '') + 'T' + pad(end.getHours()) + pad(end.getMinutes()) + '00';
+        } else dates = d + '/' + shift(e.date, 1).replace(/-/g, '');
+        return 'https://calendar.google.com/calendar/render?action=TEMPLATE&text=' + encodeURIComponent(e.title) + '&dates=' + dates + '&ctz=Asia/Seoul';
+      }
+      function item(e, opts) {
+        opts = opts || {};
+        return '<li class="pl-item task' + (e.done ? ' task-done' : '') + (e.kind === 'event' ? ' pl-event' : '') + '">' +
+          '<input type="checkbox" class="pl-cb" data-id="' + e.id + '"' + (e.done ? ' checked' : '') + '>' +
+          (e.kind === 'event' ? '<span class="pl-time">' + (e.time || '하루 종일') + '</span>' : (e.time ? '<span class="pl-time">' + e.time + '</span>' : '')) +
+          '<span class="pl-title">' + esc(e.title) + '</span>' +
+          (opts.from ? '<span class="pl-from">' + nice(e.date) + '</span><button type="button" class="pl-move" data-id="' + e.id + '">오늘로</button>' : '') +
+          '<a class="pl-g" href="' + gcal(e) + '" target="_blank" rel="noopener" title="구글 캘린더에 추가">구글 캘린더</a>' +
+          '<button type="button" class="pl-del" data-id="' + e.id + '" title="지우기">×</button></li>';
+      }
+      function find(id) { return data.events.filter(function (x) { return x.id === id; })[0]; }
+      function bind(root, redraw) {
+        root.querySelectorAll('.pl-cb').forEach(function (cb) {
+          cb.addEventListener('change', function () {
+            var e = find(cb.getAttribute('data-id')); if (!e) return;
+            e.done = cb.checked; if (cb.checked) e.doneOn = today; else delete e.doneOn;
+            save(); redraw();
+          });
+        });
+        root.querySelectorAll('.pl-del').forEach(function (b) {
+          b.addEventListener('click', function () {
+            if (!confirm('지울까요?')) return;
+            data.events = data.events.filter(function (x) { return x.id !== b.getAttribute('data-id'); }); save(); redraw();
+          });
+        });
+        root.querySelectorAll('.pl-move').forEach(function (b) {
+          b.addEventListener('click', function () { var e = find(b.getAttribute('data-id')); if (e) { e.date = today; save(); redraw(); } });
+        });
+      }
+      function addForm(root, redraw, withKind) {
+        var inp = root.querySelector('.pl-in');
+        function add() {
+          var v = inp.value.trim(); if (!v) { inp.focus(); return; }
+          var kindSel = root.querySelector('.pl-kind'), t = root.querySelector('.pl-t');
+          data.events.push({ id: newId(), kind: withKind && kindSel ? kindSel.value : 'todo', date: sel, time: t ? t.value || '' : '', title: v, done: false });
+          save(); redraw(); var again = host.querySelector('.pl-in'); if (again) again.focus();
+        }
+        root.querySelector('.pl-add').addEventListener('click', add);
+        inp.addEventListener('keydown', function (e) { if (e.key === 'Enter' && !e.isComposing) { e.preventDefault(); add(); } });
+      }
+
+      function drawTodo() {
+        var left = on(sel, 'todo').filter(function (e) { return !e.done; }), done = on(sel, 'todo').filter(function (e) { return e.done; });
+        var events = on(sel, 'event');
+        var overdue = sel === today ? data.events.filter(function (e) { return e.kind === 'todo' && !e.done && e.date < today; }).sort(function (a, b) { return a.date.localeCompare(b.date); }) : [];
+        host.innerHTML =
+          '<div class="pl-head"><button type="button" class="pl-nav" data-n="-1">‹</button><strong>' + nice(sel) + (sel === today ? ' · 오늘' : '') + '</strong><button type="button" class="pl-nav" data-n="1">›</button>' +
+            (sel !== today ? '<button type="button" class="pl-today">오늘</button>' : '') + '<span class="pl-count">남은 일 ' + left.length + ' · 한 일 ' + done.length + '</span></div>' +
+          '<div class="pl-form"><input class="pl-in" placeholder="할 일을 쓰고 엔터"><input type="time" class="pl-t" title="시간 (선택)"><button type="button" class="pl-add">추가</button></div>' +
+          (events.length ? '<h3>일정</h3><ul class="pl-list">' + events.map(function (e) { return item(e); }).join('') + '</ul>' : '') +
+          '<h3>할 일</h3>' + (left.length ? '<ul class="pl-list">' + left.map(function (e) { return item(e); }).join('') + '</ul>' : '<p class="pv-empty">남은 할 일이 없어요.</p>') +
+          (overdue.length ? '<h3>지난 날 못 한 일</h3><ul class="pl-list">' + overdue.map(function (e) { return item(e, { from: true }); }).join('') + '</ul>' : '') +
+          '<h3>한 일</h3>' + (done.length ? '<ul class="pl-list">' + done.map(function (e) { return item(e); }).join('') + '</ul>' : '<p class="pv-empty">아직 없어요.</p>');
+        host.querySelectorAll('.pl-nav').forEach(function (b) { b.addEventListener('click', function () { setSel(shift(sel, +b.getAttribute('data-n'))); drawTodo(); }); });
+        var tb = host.querySelector('.pl-today'); if (tb) tb.addEventListener('click', function () { setSel(today); drawTodo(); });
+        bind(host, drawTodo); addForm(host, drawTodo, false);
+      }
+
+      function drawCal() {
+        var y = view.getFullYear(), m = view.getMonth(), first = new Date(y, m, 1).getDay(), days = new Date(y, m + 1, 0).getDate(), cells = '';
+        for (var i = 0; i < first; i++) cells += '<div class="cal-cell cal-empty"></div>';
+        for (var d = 1; d <= days; d++) {
+          var k = y + '-' + pad(m + 1) + '-' + pad(d), list = on(k), dow = (first + d - 1) % 7;
+          var todo = list.filter(function (e) { return e.kind === 'todo'; }), doneN = todo.filter(function (e) { return e.done; }).length;
+          cells += '<button type="button" class="cal-cell' + (k === today ? ' cal-today' : '') + (k === sel ? ' cal-sel' : '') + (dow === 0 ? ' cal-sun' : dow === 6 ? ' cal-sat' : '') + '" data-d="' + k + '">' +
+            '<span class="cal-num">' + d + '</span>' +
+            list.slice(0, 3).map(function (e) {
+              return '<span class="cal-chip' + (e.kind === 'todo' ? ' cal-todo' : '') + (e.done ? ' done' : '') + '">' + (e.kind === 'todo' ? (e.done ? '✓ ' : '☐ ') : (e.time ? e.time + ' ' : '')) + esc(e.title) + '</span>';
+            }).join('') + (list.length > 3 ? '<span class="cal-more">+' + (list.length - 3) + '</span>' : '') +
+            (todo.length ? '<span class="cal-prog" title="한 일 / 할 일">' + doneN + '/' + todo.length + '</span>' : '') + '</button>';
+        }
+        var list2 = on(sel);
+        host.innerHTML =
+          '<div class="cal-head"><button type="button" class="cal-nav" data-m="-1">‹</button><strong>' + y + '년 ' + (m + 1) + '월</strong><button type="button" class="cal-nav" data-m="1">›</button><button type="button" class="cal-today-btn">오늘</button></div>' +
+          '<div class="cal-grid">' + WD.map(function (w, i) { return '<div class="cal-wd' + (i === 0 ? ' cal-sun' : i === 6 ? ' cal-sat' : '') + '">' + w + '</div>'; }).join('') + cells + '</div>' +
+          '<div class="cal-day"><h3>' + nice(sel) + '</h3>' +
+            (list2.length ? '<ul class="pl-list">' + list2.map(function (e) { return item(e); }).join('') + '</ul>' : '<p class="pv-empty">이날은 비어 있어요.</p>') +
+            '<div class="pl-form"><select class="pl-kind"><option value="todo">할 일</option><option value="event">일정</option></select><input type="time" class="pl-t"><input class="pl-in" placeholder="이름을 쓰고 엔터"><button type="button" class="pl-add">추가</button></div></div>';
+        host.querySelectorAll('.cal-nav').forEach(function (b) { b.addEventListener('click', function () { view.setMonth(view.getMonth() + +b.getAttribute('data-m')); drawCal(); }); });
+        host.querySelector('.cal-today-btn').addEventListener('click', function () { setSel(today); view = new Date(); view.setDate(1); drawCal(); });
+        host.querySelectorAll('.cal-cell[data-d]').forEach(function (c) { c.addEventListener('click', function () { setSel(c.getAttribute('data-d')); drawCal(); }); });
+        bind(host, drawCal); addForm(host, drawCal, true);
+      }
+      (mode === 'calendar' ? drawCal : drawTodo)();
+    }
+
     function showContent() {
       msg('<p>불러오는 중…</p>');
-      return ghGet(PDIR + pkey + '.enc').then(function (f) {
+      return ghGet(PDIR + storeKey + '.enc').then(function (f) {
         return f ? decText(key, JSON.parse(f.text)) : '';
       }).then(function (t) {
         body = t; render();
-        if (btnAdded) return;
+        if (btnAdded || planner) return;
         btnAdded = true;
         var ed = document.createElement('a');
         ed.className = 'me-btn me-edit'; ed.href = '#'; ed.textContent = '이 페이지 수정';
@@ -754,7 +939,12 @@ ul.task-list li input[type="checkbox"] {
     }
 
     msg('<p>불러오는 중…</p>');
-    ghGet(PDIR + 'key.json').then(function (kf) {
+    ghGet(PDIR + 'tabs.json').then(function (f) {
+      if (!f) return;
+      var list = JSON.parse(f.text); set(TABS_CACHE, JSON.stringify(list)); setType(list); renderPrivateNav(list);
+    }).catch(function () {}).then(function () {
+      return ghGet(PDIR + 'key.json');
+    }).then(function (kf) {
       if (!kf) return setupFlow();
       keyFile = JSON.parse(kf.text);
       return cachedKey(keyFile.salt).then(function (k) {
@@ -841,7 +1031,7 @@ ul.task-list li input[type="checkbox"] {
             '<section><h3>공개 탭</h3><p class="ed-tip">누구나 보는 메뉴예요. 적용하고 2~3분 뒤 반영돼요.</p><div class="tb-list" data-kind="pub"></div>' +
               '<div class="tb-add"><input class="tb-new" data-kind="pub" placeholder="새 탭 이름"><button type="button" class="tb-add-btn" data-kind="pub">추가</button></div></section>' +
             '<section><h3>비공개 탭</h3><p class="ed-tip">나만 보는 메뉴예요. 적용하면 바로 바뀌어요.</p><div class="tb-list" data-kind="priv"></div>' +
-              '<div class="tb-add"><input class="tb-new" data-kind="priv" placeholder="새 탭 이름"><button type="button" class="tb-add-btn" data-kind="priv">추가</button></div></section>' +
+              '<div class="tb-add"><input class="tb-new" data-kind="priv" placeholder="새 탭 이름"><select class="tb-type"><option value="">글</option><option value="todo">할 일</option><option value="calendar">달력</option></select><button type="button" class="tb-add-btn" data-kind="priv">추가</button></div></section>' +
           '</div>' +
           '<p class="ed-tip">삭제는 메뉴에서만 빼요. 써 둔 글은 저장소에 남아 있어요. 비공개 탭 이름은 암호화되지 않아요.</p>' +
           '<div class="ed-foot"><span class="ed-status"></span><button class="ed-apply" type="button">적용</button></div>' +
@@ -868,7 +1058,7 @@ ul.task-list li input[type="checkbox"] {
       arr.forEach(function (t, i) {
         var home = kind === 'pub' && t.href === 'index.qmd';
         var row = document.createElement('div'); row.className = 'tb-row';
-        row.innerHTML = '<input class="tb-name">' +
+        row.innerHTML = '<input class="tb-name">' + (kind === 'priv' && t.type ? '<span class="tb-badge">' + (t.type === 'todo' ? '할 일' : '달력') + '</span>' : '') +
           '<button type="button" class="tb-up" title="위로"' + (i === 0 ? ' disabled' : '') + '>↑</button>' +
           '<button type="button" class="tb-down" title="아래로"' + (i === arr.length - 1 ? ' disabled' : '') + '>↓</button>' +
           '<button type="button" class="tb-del"' + (home ? ' disabled title="첫 화면은 지울 수 없어요"' : '') + '>삭제</button>';
@@ -890,7 +1080,7 @@ ul.task-list li input[type="checkbox"] {
         var kind = b.getAttribute('data-kind'), inp = wrap.querySelector('.tb-new[data-kind="' + kind + '"]'), name = inp.value.trim();
         if (!name) { inp.focus(); return; }
         if (kind === 'pub') st.pub.push({ href: null, text: name, isNew: true });
-        else st.priv.push({ key: 'p' + Date.now().toString(36), name: name, isNew: true });
+        else { var ty = wrap.querySelector('.tb-type').value, nt = { key: 'p' + Date.now().toString(36), name: name, isNew: true }; if (ty) nt.type = ty; st.priv.push(nt); }
         inp.value = ''; changed(); draw(kind);
       });
     });
@@ -915,7 +1105,7 @@ ul.task-list li input[type="checkbox"] {
         st.nav = parseNav(r[0].text);
         if (!st.nav) throw new Error('메뉴를 찾지 못함');
         st.pub = st.nav.items.map(function (x) { return { href: x.href, text: x.text }; });
-        st.priv = r[1] ? JSON.parse(r[1].text) : privateTabs().map(function (t) { return { key: t.key, name: t.name }; });
+        st.priv = r[1] ? JSON.parse(r[1].text) : privateTabs().map(function (t) { var o = { key: t.key, name: t.name }; if (t.type) o.type = t.type; return o; });
         st.origPub = JSON.stringify(st.pub); st.origPriv = JSON.stringify(st.priv);
         st.dirty = false; status.textContent = ''; draw('pub'); draw('priv');
       }).catch(function (e) { fail(e, '불러오지'); });
@@ -949,7 +1139,7 @@ ul.task-list li input[type="checkbox"] {
         return ghPut('_quarto.yml', buildNav(st.nav, st.pub), '메뉴 바꾸기 (탭 관리)');
       }).then(function () {
         if (!privChanged) return;
-        var list = st.priv.map(function (t) { return { key: t.key, name: t.name.trim() }; });
+        var list = st.priv.map(function (t) { var o = { key: t.key, name: t.name.trim() }; if (t.type) o.type = t.type; return o; });
         return ghPut(PDIR + 'tabs.json', JSON.stringify(list, null, 2) + '\n', '비공개 탭 목록 바꾸기').then(function () {
           set(TABS_CACHE, JSON.stringify(list)); renderPrivateNav(list);
         });
@@ -1172,12 +1362,21 @@ ul.task-list li input[type="checkbox"] {
   var Q_LIMIT = 13000;
 
   function loadPrivateText(key) {
+    var info0 = privateTabs().filter(function (t) { return t.key === key; })[0];
+    if (info0 && (info0.type === 'todo' || info0.type === 'calendar')) key = 'planner';
     return ghGet(PDIR + 'key.json').then(function (kf) {
       if (!kf) return null;
       var info = JSON.parse(kf.text);
       return cachedKey(info.salt).then(function (k) {
         if (!k) throw new Error('locked');
-        return ghGet(PDIR + key + '.enc').then(function (f) { return f ? decText(k, JSON.parse(f.text)) : ''; });
+        return ghGet(PDIR + key + '.enc').then(function (f) { return f ? decText(k, JSON.parse(f.text)) : ''; }).then(function (t) {
+          try {
+            var o = JSON.parse(t);
+            if (o && Array.isArray(o.events)) return o.events.slice().sort(function (a, b) { return (a.date + (a.time || '')).localeCompare(b.date + (b.time || '')); })
+              .map(function (e) { return '- ' + e.date + ' ' + (e.time || '') + ' [' + (e.kind === 'todo' ? '할 일' : '일정') + '] ' + e.title + (e.done ? ' (완료)' : ''); }).join('\n');
+          } catch (e) {}
+          return t;
+        });
       });
     });
   }
