@@ -1,0 +1,9 @@
+---
+title: "Notes"
+subtitle: "What I am reading and learning"
+listing:
+  contents: notes
+  sort: "date desc"
+  type: default
+  fields: [date, title, description]
+---

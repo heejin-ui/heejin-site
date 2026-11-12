@@ -1,0 +1,14 @@
+---
+title: "Heejin Roh"
+subtitle: "Epidemiology · Mental health · Stigma"
+---
+
+::: {.mission}
+I want to help build a society where people don't hold prejudices about each other, where everyone can say, "That's okay, even if you're different from me."
+:::
+
+I am a master's student in epidemiology. I study how childhood family environments shape adolescent mental health, and I am interested in how stigma and social connection affect depression, social anxiety, and autism.
+
+[Childhood adversity]{.tag} [Stigma]{.tag} [Social cognition]{.tag} [Longitudinal methods]{.tag}
+
+[Read about my research →](research.qmd)

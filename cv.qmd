@@ -1,0 +1,26 @@
+---
+title: "CV"
+---
+
+## Education
+
+**[University name]**, M.S. in Epidemiology, expected February 2028
+
+**[University name]**, [Degree and major], [Year]
+
+## Research experience
+
+**[Position], [Organization]**, [Dates]
+
+- [What you did]
+
+## Work experience
+
+**[Position], [Organization]**, [Dates]
+
+- [What you did]
+
+## Skills
+
+- R
+- [Add more]

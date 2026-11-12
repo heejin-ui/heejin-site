@@ -1,0 +1,23 @@
+---
+title: "Research"
+---
+
+## Research interests
+
+- Childhood adversity and adolescent mental health trajectories
+- Stigma, prejudice, and mental health
+- Social cognition in depression, social anxiety, and autism
+- Longitudinal data analysis and causal inference
+
+## Current project
+
+**Master's thesis (expected February 2028)**
+
+Childhood neglect and abuse and trajectories of depression and social withdrawal from adolescence, using the Korean Children and Youth Panel Survey (KCYPS) 2010 cohort.
+
+[Add one or two sentences about your methods and what you hope to find.]
+
+## Skills
+
+- R
+- [Add other skills as you learn them]

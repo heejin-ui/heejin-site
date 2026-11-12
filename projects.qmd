@@ -1,0 +1,15 @@
+---
+title: "Projects"
+subtitle: "Analyses and code"
+---
+
+## Childhood adversity and adolescent mental health
+
+Longitudinal analysis of the KCYPS 2010 cohort.
+
+- Status: [in progress]
+- Code: [link to a GitHub repository when ready]
+
+## [Next project]
+
+[Short description]
