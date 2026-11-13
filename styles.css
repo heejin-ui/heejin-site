@@ -718,3 +718,85 @@ li.pl-item.task-done .pl-g, li.pl-item.task-done .pl-del, li.pl-item.task-done .
   .sm-weeks .sm-week { display: inline-flex; width: auto; gap: 6px; }
 }
 .sm-main .ed-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.sm-main button.sm-primary { background: var(--site-accent); color: var(--site-bg); }
+.sm-main button:disabled { opacity: .5; }
+.sm-marks { display: inline-flex; gap: 4px; }
+.sm-marks .sm-ok { font-size: .72rem; border: 1px solid var(--site-accent); border-radius: 4px; padding: 0 4px; line-height: 1.5; }
+.sm-ov { margin-bottom: 10px; border: 1px solid var(--site-soft) !important; }
+.sm-sub { display: flex; gap: 4px; border-bottom: 1px solid var(--site-soft); margin: 4px 0 14px; }
+.sm-main .sm-sub button { border: 0; border-bottom: 2px solid transparent; border-radius: 0; padding: 6px 12px; color: var(--site-text); opacity: .7; }
+.sm-main .sm-sub button.on { border-bottom-color: var(--site-accent); color: var(--site-accent); opacity: 1; font-weight: 600; }
+.sm-ed-in { width: 100%; box-sizing: border-box; font: inherit; font-size: .92rem; line-height: 1.6; padding: 10px 12px; border: 1px solid var(--site-soft); border-radius: 8px; background: transparent; color: var(--site-text); margin: 8px 0; }
+.sm-ed-in.over { border-color: var(--site-accent); background: var(--site-soft); }
+.sm-ed-bar { align-items: center; }
+.sm-empty-note { border: 1.5px dashed var(--site-soft); border-radius: 10px; padding: 18px; text-align: center; }
+.sm-empty-note .ed-row { justify-content: center; }
+.sm-ovtools { margin-bottom: 10px; }
+.nimg { display: block; max-width: 100%; max-height: 520px; border-radius: 8px; margin: 10px 0; border: 1px solid var(--site-soft); }
+.nimg-miss { font-size: .85rem; opacity: .6; }
+.sm-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; }
+.sm-card { border: 1px solid var(--site-soft); border-top: 3px solid var(--site-accent); border-radius: 0 0 10px 10px; padding: 12px 14px; }
+.sm-card h3 { font-size: 1.02rem; margin: 0 0 8px; color: var(--site-accent); }
+.sm-card ul { padding-left: 1.1em; margin-bottom: .4em; }
+.sm-card p { margin-bottom: .5em; font-size: .92rem; }
+.sm-marks .sm-ok { display: inline-block; line-height: 1.35; padding: 1px 4px; }
+
+/* ── 학기 공부 탭: Quarto 화면 격자 규칙에 흔들리지 않게 위치 고정 ── */
+#private-content .sm-body { display: grid !important; grid-template-columns: 190px minmax(0, 1fr) !important; grid-template-rows: auto !important; gap: 28px !important; align-items: start; width: 100%; }
+#private-content .sm-body > .sm-weeks { grid-column: 1 / 2 !important; grid-row: 1 !important; position: sticky; top: 80px; border-right: 1px solid var(--site-soft); padding-right: 16px; min-width: 0; }
+#private-content .sm-body > .sm-main { grid-column: 2 / 3 !important; grid-row: 1 !important; min-width: 0; }
+#private-content .sm-courses > *, #private-content .sm-body * { grid-column: auto; }
+.sm-step { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; margin: 22px 0 8px; font-weight: 600; }
+.sm-step b { flex: none; margin-right: 0; }
+.sm-step .sm-hint { flex-basis: 100%; margin-left: 30px; font-weight: 400; }
+.sm-whead { flex-wrap: nowrap; }
+.sm-whead .sm-title { flex: 1 1 auto; min-width: 0; }
+.sm-drop { padding: 22px 16px; }
+@media (max-width: 760px) {
+  #private-content .sm-body { grid-template-columns: minmax(0, 1fr) !important; gap: 14px !important; }
+  #private-content .sm-body > .sm-weeks { grid-column: 1 !important; grid-row: 1 !important; position: static; border-right: 0; border-bottom: 1px solid var(--site-soft); padding: 0 0 12px; }
+  #private-content .sm-body > .sm-main { grid-column: 1 !important; grid-row: 2 !important; }
+  .sm-weeks .sm-week { display: inline-flex; width: auto; gap: 6px; margin: 0 4px 4px 0; }
+  .sm-weeks .sm-ov { display: inline-flex; width: auto; }
+  .sm-weeks .sm-cap { display: none; }
+}
+
+/* ── 본문 위치: 오른쪽 빈 여백 없이 가운데 정렬 ── */
+#quarto-content.page-columns > main.content {
+  grid-column: screen-start-inset / screen-end-inset !important;
+  justify-self: center; width: 100%; max-width: 900px; box-sizing: border-box; padding-left: 20px; padding-right: 20px;
+}
+#quarto-content.page-columns > main.content:has(#private-content, #me-settings, #me-ask) { max-width: 1120px; }
+#quarto-content.page-columns > main.content #title-block-header { grid-column: auto; }
+
+/* ── 펼친 메뉴: 화면 밖으로 넘치지 않게, 넓은 화면에서는 여러 줄로 ── */
+.navbar .navbar-nav-scroll { max-height: none !important; overflow: visible !important; }
+.navbar .navbar-collapse.show, .navbar .navbar-collapse.collapsing { max-height: calc(100vh - 64px); overflow-y: auto; background: var(--site-bg); }
+@media (min-width: 768px) {
+  .navbar[class*="navbar-expand"] .navbar-nav { display: grid !important; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); column-gap: 28px; padding: 6px 0 12px; }
+  .navbar[class*="navbar-expand"] .navbar-nav .nav-item + .nav-item { border-top: 0; }
+  .navbar[class*="navbar-expand"] .navbar-nav .nav-item { border-bottom: 1px solid var(--site-soft); }
+}
+
+/* ── 휴대폰: Setting·Ask Claude가 화면 밖으로 넘치지 않게 ── */
+#me-settings input, #me-settings select, #me-settings textarea, #me-ask input, #me-ask select, #me-ask textarea { max-width: 100%; min-width: 0; box-sizing: border-box; }
+#me-settings .st-nav button { white-space: nowrap; }
+@media (max-width: 760px) {
+  #me-settings .st-body, #me-settings .tb-cols { grid-template-columns: minmax(0, 1fr) !important; gap: 20px; }
+  #me-settings .st-side { position: static; }
+  #me-settings .st-nav { display: flex; flex-wrap: wrap; gap: 4px; }
+  #me-settings .st-row { flex-wrap: wrap; }
+  #me-settings .st-row span { width: 64px; }
+  #me-settings .st-row .st-hex, #me-settings .st-row .st-font-in, #me-settings .st-row select, #me-settings .st-row input[type=text] { flex: 1 1 0; width: auto; }
+  #me-settings .st-msg { margin-left: 0; }
+  #me-settings .tb-row .tb-name { flex: 1 1 0; width: auto; }
+  #me-settings .tb-add { flex-wrap: wrap; }
+  #me-settings .tb-add .tb-new { flex: 1 1 140px; width: auto; }
+  #me-settings .st-btns { flex-wrap: wrap; }
+  main.content { overflow-x: hidden; }
+}
+@media (max-width: 760px) {
+  #me-settings .st-nav { display: grid !important; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  #me-settings .st-nav button { padding: 7px 4px; font-size: 13px; }
+  main.content { padding-bottom: 80px; }
+}

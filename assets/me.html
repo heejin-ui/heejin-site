@@ -206,6 +206,15 @@
   function decText(key, o) {
     return crypto.subtle.decrypt({ name: 'AES-GCM', iv: b64ToBytes(o.iv) }, key, b64ToBytes(o.ct)).then(function (pt) { return new TextDecoder().decode(pt); });
   }
+  function encBytes(key, bytes, type) {
+    var iv = crypto.getRandomValues(new Uint8Array(12));
+    return crypto.subtle.encrypt({ name: 'AES-GCM', iv: iv }, key, bytes).then(function (ct) {
+      return { v: 1, type: type, iv: bytesToB64(iv), ct: bytesToB64(new Uint8Array(ct)) };
+    });
+  }
+  function decBytes(key, o) {
+    return crypto.subtle.decrypt({ name: 'AES-GCM', iv: b64ToBytes(o.iv) }, key, b64ToBytes(o.ct)).then(function (pt) { return new Uint8Array(pt); });
+  }
   function cachedKey(salt) {
     try {
       var c = JSON.parse(get(PKEY));
@@ -224,7 +233,11 @@
     t = t.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
     t = t.replace(/\*([^*]+)\*/g, '<em>$1</em>');
     t = t.replace(/\[([^\]]+)\]\{\.([\w-]+)\}/g, '<span class="$2">$1</span>');
-    t = t.replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, function (m, a, u) { return '<a href="' + u.replace(/\.qmd$/, '.html') + '">' + a + '</a>'; });
+    t = t.replace(/!\[([^\]]*)\]\(img:([\w-]+)\)/g, '<img class="nimg" data-img="$2" alt="$1">');
+    t = t.replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, function (m, a, u) {
+      if (/^[a-z][\w+.-]*:/i.test(u) && !/^(https?|mailto):/i.test(u)) return a;
+      return '<a href="' + u.replace(/\.qmd$/, '.html').replace(/"/g, '&quot;') + '">' + a + '</a>';
+    });
     t = t.replace(/(^|[\s(])(https?:\/\/[^\s<)]+)/g, '$1<a href="$2" target="_blank" rel="noopener">$2</a>');
     t = t.replace(/\u0000T(\d+)([01])\u0000\s?/g, function (m, k, d) { return '<input type="checkbox" class="task-cb" data-line="' + k + '"' + (d === '1' ? ' checked' : '') + '>'; });
     return t;
@@ -504,11 +517,24 @@
     ['method', '역학연구방법론', ['연구 설계·편향 점검']],
     ['r', 'R', ['오늘 쓴 코드']]
   ];
+  var NOTE_TOP = '## 오늘 수업 한 문장\n\n\n## 내 말로 다시 설명하기\n\n\n## 예시 · 내 연구에 대입해 보기\n\n\n';
+  var NOTE_BOTTOM = '## 헷갈린 것\n- [ ] \n\n## 복습 체크\n- [ ] 요약 다시 읽기\n- [ ] 과제·연습문제\n';
+  var NOTE_EXTRA = {
+    llm: '## 직접 써 본 프롬프트와 결과\n\n\n',
+    data: '## 분석 순서 따라 해 보기\n\n\n',
+    method: '## 그림으로 그려 보기\n> [그림 자리] 노출, 결과, 교란 변수 관계를 그려서 사진 넣기\n\n',
+    r: '## 직접 돌려 본 코드\n```r\n\n```\n\n'
+  };
   function semesterData(text) {
     var o = null; try { o = JSON.parse(text || ''); } catch (e) {}
     if (!o || !Array.isArray(o.courses)) o = { courses: [] };
     if (!o.courses.length) o.courses = SEM_COURSES.map(function (c) { return { id: c[0], name: c[1], sections: SEM_BASE.slice(0, 2).concat(c[2], SEM_BASE.slice(2)), weeks: [] }; });
-    o.courses.forEach(function (c) { if (!Array.isArray(c.weeks)) c.weeks = []; if (!Array.isArray(c.sections) || !c.sections.length) c.sections = SEM_BASE.slice(); });
+    o.courses.forEach(function (c) {
+      if (!Array.isArray(c.weeks)) c.weeks = [];
+      if (!Array.isArray(c.sections) || !c.sections.length) c.sections = SEM_BASE.slice();
+      if (typeof c.noteTpl !== 'string') c.noteTpl = NOTE_TOP + (NOTE_EXTRA[c.id] || '') + NOTE_BOTTOM;
+      if (!c.overview) c.overview = { text: '', concepts: '' };
+    });
     return o;
   }
 
@@ -785,17 +811,215 @@
       function save() { body = JSON.stringify(data, null, 1); scheduleSave(); }
       var ss = function (k, v) { try { if (v === undefined) return sessionStorage.getItem(k); sessionStorage.setItem(k, v); } catch (e) {} };
       var ci = Math.min(+(ss('hj-sem-c-' + pkey) || 0), data.courses.length - 1);
-      var transcript = '', fileName = '';
+      var transcript = '', fileName = '', editing = null, pending = [];
       function course() { return data.courses[ci]; }
-      function curWeek() { var c = course(), n = +(ss('hj-sem-w-' + pkey + '-' + c.id) || 0); return c.weeks.filter(function (w) { return w.n === n; })[0] || c.weeks[c.weeks.length - 1] || null; }
-      function setWeek(w) { ss('hj-sem-w-' + pkey + '-' + course().id, String(w ? w.n : 0)); }
+      function vkey() { return 'hj-sem-w-' + pkey + '-' + course().id; }
+      function curView() { return ss(vkey()) || ''; }
+      function setView(v) { ss(vkey(), String(v)); transcript = ''; fileName = ''; editing = null; }
+      function curWeek() {
+        var c = course(), v = curView();
+        if (v === 'ov') return null;
+        return c.weeks.filter(function (w) { return String(w.n) === v; })[0] || c.weeks.slice().sort(function (a, b) { return a.n - b.n; })[c.weeks.length - 1] || null;
+      }
+      function sub(name, def) { return ss('hj-sem-s-' + name) || def; }
+      function setSub(name, v) { ss('hj-sem-s-' + name, v); }
+      function noImg(t) { return (t || '').replace(/!\[[^\]]*\]\(img:[\w-]+\)/g, '[사진]'); }
+      function openClaude(t, status, okMsg) {
+        if (t.length <= Q_LIMIT) {
+          window.open('https://claude.ai/new?q=' + encodeURIComponent(t), '_blank', 'noopener');
+          status.textContent = okMsg;
+        } else {
+          var cp = navigator.clipboard.writeText(t);
+          window.open('https://claude.ai/new', '_blank', 'noopener');
+          cp.then(function () { status.textContent = '글이 길어서(' + t.length.toLocaleString() + '자) 질문 전체를 복사했어요. 열린 claude.ai 창에 붙여 넣어 주세요.'; },
+            function () { status.textContent = '복사하지 못했어요. "질문 복사만"을 눌러 주세요.'; });
+        }
+      }
+      function copyOnly(t, status) {
+        navigator.clipboard.writeText(t).then(function () { status.textContent = '질문을 복사했어요.'; }, function () { status.textContent = '복사하지 못했어요.'; });
+      }
 
+      /* 사진: 줄이고 → 암호화해서 private-data/img/에 저장 */
+      var imgCache = {};
+      function shrink(file) {
+        return new Promise(function (res, rej) {
+          var url = URL.createObjectURL(file), im = new Image();
+          im.onload = function () {
+            var r = Math.min(1, 1600 / Math.max(im.naturalWidth, im.naturalHeight)), cv = document.createElement('canvas');
+            cv.width = Math.round(im.naturalWidth * r); cv.height = Math.round(im.naturalHeight * r);
+            var cx = cv.getContext('2d'); cx.fillStyle = '#fff'; cx.fillRect(0, 0, cv.width, cv.height); cx.drawImage(im, 0, 0, cv.width, cv.height);
+            URL.revokeObjectURL(url);
+            (function attempt(q) {
+              cv.toBlob(function (b) {
+                if (!b) return rej(new Error('사진을 읽지 못했어요'));
+                if (b.size > 600000 && q > 0.45) return attempt(q - 0.12);
+                res(b);
+              }, 'image/jpeg', q);
+            })(0.82);
+          };
+          im.onerror = function () { URL.revokeObjectURL(url); rej(new Error('이 형식의 사진은 열 수 없어요')); };
+          im.src = url;
+        });
+      }
+      function uploadImage(file) {
+        var id = 'i' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+        var job = shrink(file).then(function (blob) {
+          imgCache[id] = URL.createObjectURL(blob);
+          return blob.arrayBuffer();
+        }).then(function (buf) { return encBytes(key, new Uint8Array(buf), 'image/jpeg'); })
+          .then(function (o) { return ghPut(PDIR + 'img/' + id + '.enc', JSON.stringify(o), '비공개 사진 추가'); });
+        return { id: id, job: job };
+      }
+      function hydrate(root) {
+        root.querySelectorAll('img[data-img]').forEach(function (im) {
+          var id = im.getAttribute('data-img');
+          if (imgCache[id]) { im.src = imgCache[id]; return; }
+          ghGet(PDIR + 'img/' + id + '.enc').then(function (f) {
+            if (!f) throw new Error('없음');
+            var o = JSON.parse(f.text);
+            return decBytes(key, o).then(function (u8) { imgCache[id] = URL.createObjectURL(new Blob([u8], { type: o.type || 'image/jpeg' })); im.src = imgCache[id]; });
+          }).catch(function () { im.replaceWith(Object.assign(document.createElement('span'), { className: 'nimg-miss', textContent: '[사진을 불러오지 못했어요]' })); });
+        });
+      }
+
+      /* 체크박스: 어떤 글(get/set)에든 연결 */
+      function prepTasksOf(src) {
+        var fence = false;
+        return src.split('\n').map(function (l, i) {
+          if (/^```/.test(l)) fence = !fence;
+          var m = !fence && l.match(TASK_RE);
+          return m ? m[1] + '\u0000T' + i + (/x|☑/i.test(m[2]) ? 1 : 0) + '\u0000 ' + m[4] : l;
+        }).join('\n');
+      }
+      function showMd(root, src, getT, setT) {
+        root.innerHTML = md(prepTasksOf(src || ''));
+        root.querySelectorAll('.task-cb').forEach(function (cb) {
+          var li = cb.closest('li'); if (li) { li.classList.add('task'); li.classList.toggle('task-done', cb.checked); }
+          cb.addEventListener('change', function () {
+            var k = +cb.getAttribute('data-line'), lines = getT().split('\n'), m = lines[k] && lines[k].match(TASK_RE);
+            if (!m) return;
+            lines[k] = m[1] + (cb.checked ? '[x]' : '[ ]') + m[3] + m[4]; setT(lines.join('\n'));
+            if (li) li.classList.toggle('task-done', cb.checked); save();
+          });
+        });
+        hydrate(root);
+      }
+
+      /* 공통 편집기: 글 + 사진 넣기 */
+      function editorHtml(text, ph) {
+        return '<div class="sm-ed"><div class="ed-row sm-ed-bar"><button type="button" class="sm-img-btn">사진 넣기</button><input type="file" class="sm-img-file" accept="image/*" multiple hidden>' +
+          '<span class="sm-hint">사진은 끌어다 놓거나 붙여 넣어도 돼요. [그림 자리] 줄에 커서를 두면 그 자리에 들어가요</span></div>' +
+          '<textarea class="sm-ed-in" rows="18" placeholder="' + (ph || '') + '">' + esc(text || '') + '</textarea>' +
+          '<div class="ed-row"><button type="button" class="sm-ed-save">저장</button><button type="button" class="sm-ed-cancel">취소</button><span class="sm-ed-st sm-status"></span></div></div>';
+      }
+      function bindEditor(root, onSave) {
+        var ta = root.querySelector('.sm-ed-in'), st = root.querySelector('.sm-ed-st'), fi = root.querySelector('.sm-img-file');
+        function insert(files) {
+          files = Array.prototype.filter.call(files || [], function (f) { return /^image\//.test(f.type) || /\.(heic|heif|jpe?g|png|gif|webp)$/i.test(f.name); });
+          if (!files.length) return;
+          if (!get(TOKEN)) { st.textContent = '사진을 저장하려면 깃허브 토큰이 필요해요.'; return; }
+          var refs = files.map(function (f) { return uploadImage(f); });
+          var tags = refs.map(function (r) { return '![사진](img:' + r.id + ')'; }).join('\n');
+          var v = ta.value, pos = ta.selectionStart, ls = v.lastIndexOf('\n', pos - 1) + 1, le = v.indexOf('\n', pos); if (le < 0) le = v.length;
+          if (/\[그림 자리\]/.test(v.slice(ls, le))) { ta.value = v.slice(0, ls) + tags + v.slice(le); pos = ls + tags.length; }
+          else { var pre = v.slice(0, pos), add = (pre && !/\n$/.test(pre) ? '\n' : '') + tags + '\n'; ta.value = pre + add + v.slice(pos); pos = pre.length + add.length; }
+          ta.focus(); ta.setSelectionRange(pos, pos);
+          st.textContent = '사진 ' + refs.length + '장 올리는 중…';
+          var all = Promise.all(refs.map(function (r) { return r.job; }));
+          pending.push(all);
+          all.then(function () { st.textContent = '사진을 올렸어요. 저장을 눌러 주세요.'; }, function (e) { st.textContent = '사진을 올리지 못했어요 (' + e.message + ')'; });
+        }
+        root.querySelector('.sm-img-btn').addEventListener('click', function () { fi.click(); });
+        fi.addEventListener('change', function () { insert(fi.files); fi.value = ''; });
+        ta.addEventListener('dragover', function (e) { e.preventDefault(); ta.classList.add('over'); });
+        ta.addEventListener('dragleave', function () { ta.classList.remove('over'); });
+        ta.addEventListener('drop', function (e) { e.preventDefault(); ta.classList.remove('over'); insert(e.dataTransfer.files); });
+        ta.addEventListener('paste', function (e) {
+          var fs = Array.prototype.map.call(e.clipboardData ? e.clipboardData.items : [], function (it) { return it.kind === 'file' ? it.getAsFile() : null; }).filter(Boolean);
+          if (fs.length) { e.preventDefault(); insert(fs); }
+        });
+        root.querySelector('.sm-ed-save').addEventListener('click', function () {
+          var btn = this; btn.disabled = true; st.textContent = pending.length ? '사진 올리기를 기다리는 중…' : '';
+          Promise.all(pending).then(function () {
+            pending = []; editing = null; onSave(ta.value.replace(/\r/g, '').replace(/\s+$/, '') + '\n'); save(); draw();
+          }, function () { btn.disabled = false; pending = []; st.textContent = '올리지 못한 사진이 있어요. 그 줄을 지우고 다시 저장해 주세요.'; });
+        });
+        root.querySelector('.sm-ed-cancel').addEventListener('click', function () { editing = null; draw(); });
+      }
+
+      function draw() {
+        var c = course(), v = curView(), w = curWeek(), ov = v === 'ov';
+        host.innerHTML =
+          '<div class="sm-courses">' + data.courses.map(function (x, i) { return '<button type="button" class="sm-course' + (i === ci ? ' on' : '') + '" data-i="' + i + '">' + esc(x.name) + '</button>'; }).join('') + '</div>' +
+          '<div class="sm-body"><div class="sm-weeks">' +
+            '<button type="button" class="sm-week sm-ov' + (ov ? ' on' : '') + '"><span>총정리</span>' + (c.overview.text ? '<span class="sm-ok">✓</span>' : '') + '</button>' +
+            '<div class="sm-cap">주차</div>' +
+            c.weeks.slice().sort(function (a, b) { return a.n - b.n; }).map(function (x) {
+              return '<button type="button" class="sm-week' + (!ov && w && x.n === w.n ? ' on' : '') + '" data-n="' + x.n + '"><span>' + x.n + '주차</span><span class="sm-marks">' + (x.summary ? '<span class="sm-ok" title="요약">요</span>' : '') + (x.note ? '<span class="sm-ok" title="내 노트">노</span>' : '') + '</span></button>';
+            }).join('') +
+            '<div class="sm-addw"><input type="number" min="1" max="30" class="sm-wn" value="' + (c.weeks.reduce(function (m, x) { return Math.max(m, x.n); }, 0) + 1) + '"><button type="button" class="sm-wadd">주차 추가</button></div>' +
+            '<details class="sm-tpl"><summary>요약 틀 고치기</summary><p class="sm-hint">한 줄에 칸 하나씩</p><textarea class="sm-tpl-in" rows="8">' + esc(c.sections.join('\n')) + '</textarea><button type="button" class="sm-tpl-save">틀 저장</button></details>' +
+            '<details class="sm-tpl"><summary>노트 틀 고치기</summary><p class="sm-hint">"## 칸 이름"으로 칸을 나눠요. [그림 자리] 줄은 사진 넣을 곳</p><textarea class="sm-ntpl-in" rows="12">' + esc(c.noteTpl) + '</textarea><button type="button" class="sm-ntpl-save">틀 저장</button></details>' +
+          '</div><div class="sm-main">' + (ov ? ovHtml(c) : w ? weekHtml(c, w) : '<p class="pv-empty">왼쪽에서 주차를 추가해 주세요.</p>') + '</div></div>';
+        host.querySelectorAll('.sm-course').forEach(function (b) { b.addEventListener('click', function () { ci = +b.getAttribute('data-i'); ss('hj-sem-c-' + pkey, String(ci)); transcript = ''; fileName = ''; editing = null; draw(); }); });
+        host.querySelectorAll('.sm-week[data-n]').forEach(function (b) { b.addEventListener('click', function () { setView(b.getAttribute('data-n')); draw(); }); });
+        host.querySelector('.sm-ov').addEventListener('click', function () { setView('ov'); draw(); });
+        host.querySelector('.sm-wadd').addEventListener('click', function () {
+          var n = parseInt(host.querySelector('.sm-wn').value, 10);
+          if (!(n > 0)) return;
+          if (!c.weeks.some(function (x) { return x.n === n; })) { c.weeks.push({ n: n, title: '', summary: '', note: '' }); save(); }
+          setView(n); draw();
+        });
+        host.querySelector('.sm-tpl-save').addEventListener('click', function () {
+          var t = host.querySelector('.sm-tpl-in').value.split('\n').map(function (x) { return x.trim(); }).filter(Boolean);
+          if (!t.length) return; c.sections = t; save(); draw();
+        });
+        host.querySelector('.sm-ntpl-save').addEventListener('click', function () {
+          var t = host.querySelector('.sm-ntpl-in').value.replace(/\r/g, ''); if (!t.trim()) return; c.noteTpl = t; save(); draw();
+        });
+        if (ov) bindOv(c); else if (w) bindWeek(c, w);
+      }
+
+      function tabs(name, list, cur) {
+        return '<nav class="sm-sub">' + list.map(function (x) { return '<button type="button" data-sub="' + name + '" data-v="' + x[0] + '"' + (x[0] === cur ? ' class="on"' : '') + '>' + x[1] + '</button>'; }).join('') + '</nav>';
+      }
+      function bindTabs(name) {
+        host.querySelectorAll('.sm-sub button[data-sub="' + name + '"]').forEach(function (b) { b.addEventListener('click', function () { setSub(name, b.getAttribute('data-v')); editing = null; draw(); }); });
+      }
+
+      /* ---------- 주차: 요약 | 내 노트 ---------- */
+      function weekHtml(c, w) {
+        var sv = sub('week', 'sum');
+        var head = '<div class="sm-whead"><span class="sm-wtitle">' + w.n + '주차</span><input class="sm-title" placeholder="이번 주 주제 (선택)" value="' + esc(w.title || '').replace(/"/g, '&quot;') + '">' +
+          '<button type="button" class="sm-wdel" title="이 주차 지우기">×</button></div>' + tabs('week', [['sum', '수업 요약'], ['note', '내 노트']], sv);
+        if (sv === 'note') {
+          if (editing === 'note') return head + editorHtml(w.note, '노트를 쓰세요');
+          if (!w.note) return head + '<div class="sm-empty-note"><p>아직 노트가 없어요.</p><div class="ed-row"><button type="button" class="sm-tpl-use sm-primary">템플릿 넣기</button><button type="button" class="sm-blank">빈 노트로 시작</button></div></div>';
+          return head + '<div class="ed-row"><button type="button" class="sm-note-edit">고치기</button></div><div class="sm-summary sm-note"></div>';
+        }
+        return head +
+          '<div class="sm-steps">' +
+          '<div class="sm-step"><b>1</b> 녹음 전사문 올리기 <span class="sm-hint">저장되지 않고 이 화면에서만 쓰여요</span></div>' +
+          '<div class="sm-drop' + (transcript ? ' has' : '') + '"><input type="file" class="sm-file" accept=".txt,.md,.vtt,.srt" hidden>' +
+            (transcript ? '<span>' + esc(fileName || '붙여 넣은 글') + ' · ' + transcript.length.toLocaleString() + '자</span> <button type="button" class="sm-clear">비우기</button>'
+              : '<span>전사문 파일을 끌어다 놓거나 <a href="#" class="sm-pick">골라 주세요</a> (txt, md, vtt, srt)</span>') + '</div>' +
+          '<details class="sm-paste"><summary>파일 대신 글로 붙여 넣기</summary><textarea class="sm-paste-in" rows="5" placeholder="전사문을 붙여 넣으세요"></textarea><button type="button" class="sm-paste-ok">이 글 쓰기</button></details>' +
+          '<label class="sm-names-l">요약 전에 지울 이름 <input class="sm-names" placeholder="쉼표로 구분 — 다른 학생 이름"></label>' +
+          '<div class="sm-step"><b>2</b> claude.ai에서 요약 받기 <span class="sm-hint">강의자료 PDF는 열린 창에 직접 첨부해 주세요</span></div>' +
+          '<div class="ed-row"><button type="button" class="sm-go sm-primary">요약 만들기</button><button type="button" class="sm-copy">질문 복사만</button></div>' +
+          '<p class="sm-status sm-go-st"></p>' +
+          '<div class="sm-step"><b>3</b> 받은 요약 붙여 넣고 저장</div>' +
+          '<details class="sm-sum-ed"' + (w.summary ? '' : ' open') + '><summary>' + (w.summary ? '요약 고치기' : '요약 붙여넣기') + '</summary>' +
+            '<textarea class="sm-sum-in" rows="10" placeholder="claude.ai가 준 요약을 그대로 붙여 넣으세요">' + esc(w.summary || '') + '</textarea>' +
+            '<button type="button" class="sm-sum-save sm-primary">요약 저장</button></details></div>' +
+          '<div class="sm-summary sm-sum-view"></div>';
+      }
       function scrub(t) {
-        var names = (host.querySelector('.sm-names') || {}).value || '';
+        var el2 = host.querySelector('.sm-names'), names = el2 ? el2.value : '';
         names.split(/[,\n]/).map(function (x) { return x.trim(); }).filter(Boolean).forEach(function (nm) { t = t.split(nm).join('[이름]'); });
         return t;
       }
-      function prompt(c, w, text) {
+      function sumPrompt(c, w, text) {
         return '나는 보건대학원에서 역학을 공부하는 대학원생이야. 아래는 "' + c.name + '" 수업 ' + w.n + '주차' + (w.title ? ' (' + w.title + ')' : '') + ' 녹음 전사문이야.' +
           ' 강의자료를 첨부했다면 함께 참고해 줘.\n\n' +
           '아래 틀에 맞춰 한국어 마크다운으로 정리해 줘. 각 칸은 "## 칸 이름" 제목으로 시작해 줘.\n' +
@@ -806,61 +1030,27 @@
           '- 수업 중 다른 학생의 이름이나 개인 이야기는 요약에 넣지 말아 줘.\n\n' +
           '[전사문]\n' + (text || '(전사문 없음. 첨부한 강의자료만 보고 정리해 줘.)');
       }
-
-      function draw() {
-        var c = course(), w = curWeek();
-        host.innerHTML =
-          '<div class="sm-courses">' + data.courses.map(function (x, i) { return '<button type="button" class="sm-course' + (i === ci ? ' on' : '') + '" data-i="' + i + '">' + esc(x.name) + '</button>'; }).join('') + '</div>' +
-          '<div class="sm-body"><aside class="sm-weeks"><div class="sm-cap">주차</div>' +
-            c.weeks.slice().sort(function (a, b) { return a.n - b.n; }).map(function (x) {
-              return '<button type="button" class="sm-week' + (w && x.n === w.n ? ' on' : '') + '" data-n="' + x.n + '"><span>' + x.n + '주차</span>' + (x.summary ? '<span class="sm-ok">✓</span>' : '') + '</button>';
-            }).join('') +
-            '<div class="sm-addw"><input type="number" min="1" max="30" class="sm-wn" value="' + (c.weeks.reduce(function (m, x) { return Math.max(m, x.n); }, 0) + 1) + '"><button type="button" class="sm-wadd">주차 추가</button></div>' +
-            '<details class="sm-tpl"><summary>요약 틀 고치기</summary><p class="sm-hint">한 줄에 칸 하나씩</p><textarea class="sm-tpl-in" rows="8">' + esc(c.sections.join('\n')) + '</textarea><button type="button" class="sm-tpl-save">틀 저장</button></details>' +
-          '</aside><section class="sm-main">' + (w ? weekHtml(c, w) : '<p class="pv-empty">왼쪽에서 주차를 추가해 주세요.</p>') + '</section></div>';
-        host.querySelectorAll('.sm-course').forEach(function (b) { b.addEventListener('click', function () { ci = +b.getAttribute('data-i'); ss('hj-sem-c-' + pkey, String(ci)); transcript = ''; fileName = ''; draw(); }); });
-        host.querySelectorAll('.sm-week').forEach(function (b) { b.addEventListener('click', function () { setWeek({ n: +b.getAttribute('data-n') }); transcript = ''; fileName = ''; draw(); }); });
-        host.querySelector('.sm-wadd').addEventListener('click', function () {
-          var n = parseInt(host.querySelector('.sm-wn').value, 10);
-          if (!(n > 0)) return;
-          if (!c.weeks.some(function (x) { return x.n === n; })) { c.weeks.push({ n: n, title: '', summary: '' }); save(); }
-          setWeek({ n: n }); transcript = ''; fileName = ''; draw();
-        });
-        host.querySelector('.sm-tpl-save').addEventListener('click', function () {
-          var v = host.querySelector('.sm-tpl-in').value.split('\n').map(function (x) { return x.trim(); }).filter(Boolean);
-          if (!v.length) return; c.sections = v; save(); draw();
-        });
-        if (w) bindWeek(c, w);
-      }
-
-      function weekHtml(c, w) {
-        return '<div class="sm-whead"><span class="sm-wtitle">' + w.n + '주차</span><input class="sm-title" placeholder="이번 주 주제 (선택)" value="' + esc(w.title || '').replace(/"/g, '&quot;') + '">' +
-            '<button type="button" class="sm-wdel" title="이 주차 지우기">×</button></div>' +
-          '<div class="sm-steps">' +
-          '<div class="sm-step"><b>1</b> 녹음 전사문 올리기 <span class="sm-hint">저장되지 않고 이 화면에서만 쓰여요</span></div>' +
-          '<div class="sm-drop' + (transcript ? ' has' : '') + '"><input type="file" class="sm-file" accept=".txt,.md,.vtt,.srt" hidden>' +
-            (transcript ? '<span>' + esc(fileName || '붙여 넣은 글') + ' · ' + transcript.length.toLocaleString() + '자</span> <button type="button" class="sm-clear">비우기</button>'
-              : '<span>전사문 파일을 끌어다 놓거나 <a href="#" class="sm-pick">골라 주세요</a> (txt, md, vtt, srt)</span>') + '</div>' +
-          '<details class="sm-paste"><summary>파일 대신 글로 붙여 넣기</summary><textarea class="sm-paste-in" rows="5" placeholder="전사문을 붙여 넣으세요"></textarea><button type="button" class="sm-paste-ok">이 글 쓰기</button></details>' +
-          '<label class="sm-names-l">요약 전에 지울 이름 <input class="sm-names" placeholder="쉼표로 구분 — 다른 학생 이름"></label>' +
-          '<div class="sm-step"><b>2</b> claude.ai에서 요약 받기 <span class="sm-hint">강의자료 PDF는 열린 창에 직접 첨부해 주세요</span></div>' +
-          '<div class="ed-row"><button type="button" class="sm-go">요약 만들기</button><button type="button" class="sm-copy">질문 복사만</button></div>' +
-          '<p class="sm-status"></p>' +
-          '<div class="sm-step"><b>3</b> 받은 요약 붙여 넣고 저장</div>' +
-          '<details class="sm-sum-ed"' + (w.summary ? '' : ' open') + '><summary>' + (w.summary ? '요약 고치기' : '요약 붙여넣기') + '</summary>' +
-            '<textarea class="sm-sum-in" rows="10" placeholder="claude.ai가 준 요약을 그대로 붙여 넣으세요">' + esc(w.summary || '') + '</textarea>' +
-            '<button type="button" class="sm-sum-save">요약 저장</button></details></div>' +
-          '<div class="sm-summary"></div>';
-      }
-
       function bindWeek(c, w) {
-        var $ = function (q) { return host.querySelector(q); }, status = $('.sm-status');
-        if (w.summary) { var wrap = $('.sm-summary'); var prepared = prepSemTasks(w.summary); wrap.innerHTML = md(prepared); bindSemTasks(wrap, w); }
+        var $ = function (q) { return host.querySelector(q); };
+        bindTabs('week');
         $('.sm-title').addEventListener('change', function () { w.title = this.value.trim(); save(); });
         $('.sm-wdel').addEventListener('click', function () {
-          if (!confirm(w.n + '주차를 지울까요? 저장된 요약도 함께 지워져요.')) return;
-          c.weeks = c.weeks.filter(function (x) { return x !== w; }); setWeek(null); save(); draw();
+          if (!confirm(w.n + '주차를 지울까요? 요약과 노트도 함께 지워져요.')) return;
+          c.weeks = c.weeks.filter(function (x) { return x !== w; }); setView(''); save(); draw();
         });
+        if (sub('week', 'sum') === 'note') {
+          if (editing === 'note') return bindEditor(host, function (t) { w.note = t; w.updated = new Date().toISOString().slice(0, 10); });
+          if (!w.note) {
+            $('.sm-tpl-use').addEventListener('click', function () { editing = 'note'; draw(); var ta = $('.sm-ed-in'); ta.value = c.noteTpl; ta.focus(); ta.setSelectionRange(0, 0); });
+            $('.sm-blank').addEventListener('click', function () { editing = 'note'; draw(); $('.sm-ed-in').focus(); });
+            return;
+          }
+          $('.sm-note-edit').addEventListener('click', function () { editing = 'note'; draw(); });
+          showMd($('.sm-note'), w.note, function () { return w.note; }, function (t) { w.note = t; });
+          return;
+        }
+        var status = $('.sm-go-st');
+        if (w.summary) showMd($('.sm-sum-view'), w.summary, function () { return w.summary; }, function (t) { w.summary = t; });
         function take(name, text) { fileName = name; transcript = text.replace(/\r/g, ''); draw(); }
         function readFile(f) {
           if (!f) return;
@@ -875,41 +1065,110 @@
         drop.addEventListener('drop', function (e) { readFile(e.dataTransfer.files[0]); });
         var clr = $('.sm-clear'); if (clr) clr.addEventListener('click', function () { transcript = ''; fileName = ''; draw(); });
         $('.sm-paste-ok').addEventListener('click', function () { var v = $('.sm-paste-in').value; if (v.trim()) take('붙여 넣은 글', v); });
-        function text() { return prompt(c, w, scrub(transcript)); }
-        $('.sm-go').addEventListener('click', function () {
-          var t = text();
-          if (t.length <= Q_LIMIT) {
-            window.open('https://claude.ai/new?q=' + encodeURIComponent(t), '_blank', 'noopener');
-            status.textContent = 'claude.ai 새 대화를 열었어요. 강의자료가 있으면 첨부하고 보내기를 눌러 주세요.';
-          } else {
-            var cp = navigator.clipboard.writeText(t);
-            window.open('https://claude.ai/new', '_blank', 'noopener');
-            cp.then(function () {
-              status.textContent = '전사문이 길어서(' + t.length.toLocaleString() + '자) 질문 전체를 복사했어요. 열린 claude.ai 창에 붙여 넣어 주세요.';
-            }, function () { status.textContent = '복사하지 못했어요. "질문 복사만"을 다시 눌러 주세요.'; });
-          }
-        });
-        $('.sm-copy').addEventListener('click', function () {
-          navigator.clipboard.writeText(text()).then(function () { status.textContent = '질문을 복사했어요.'; }, function () { status.textContent = '복사하지 못했어요.'; });
-        });
+        function text() { return sumPrompt(c, w, scrub(transcript)); }
+        $('.sm-go').addEventListener('click', function () { openClaude(text(), status, 'claude.ai 새 대화를 열었어요. 강의자료가 있으면 첨부하고 보내기를 눌러 주세요.'); });
+        $('.sm-copy').addEventListener('click', function () { copyOnly(text(), status); });
         $('.sm-sum-save').addEventListener('click', function () {
           w.summary = $('.sm-sum-in').value.replace(/\r/g, '').trim(); w.updated = new Date().toISOString().slice(0, 10);
           save(); draw();
         });
       }
-      function prepSemTasks(src) {
-        return src.split('\n').map(function (l, i) { var m = l.match(TASK_RE); return m ? m[1] + '\u0000T' + i + (/x|☑/i.test(m[2]) ? 1 : 0) + '\u0000 ' + m[4] : l; }).join('\n');
+
+      /* ---------- 총정리 | 개념 묶음 ---------- */
+      function sections(note) {
+        var out = [], cur = null, fence = false;
+        (note || '').split('\n').forEach(function (l) {
+          if (/^```/.test(l)) fence = !fence;
+          var m = !fence && l.match(/^##\s+(.+?)\s*$/);
+          if (m) { cur = { h: m[1], lines: [] }; out.push(cur); } else if (cur) cur.lines.push(l);
+        });
+        return out;
       }
-      function bindSemTasks(root, w) {
-        root.querySelectorAll('.task-cb').forEach(function (cb) {
-          var li = cb.closest('li'); if (li) { li.classList.add('task'); li.classList.toggle('task-done', cb.checked); }
-          cb.addEventListener('change', function () {
-            var k = +cb.getAttribute('data-line'), lines = w.summary.split('\n'), m = lines[k] && lines[k].match(TASK_RE);
-            if (!m) return;
-            lines[k] = m[1] + (cb.checked ? '[x]' : '[ ]') + m[3] + m[4]; w.summary = lines.join('\n');
-            if (li) li.classList.toggle('task-done', cb.checked); save();
+      function gather(c) {
+        var order = [], map = {};
+        c.weeks.slice().sort(function (a, b) { return a.n - b.n; }).forEach(function (w) {
+          sections(w.note).forEach(function (sx) {
+            if (/복습 체크/.test(sx.h)) return;
+            var lines = sx.lines;
+            if (/헷갈|질문/.test(sx.h)) lines = lines.filter(function (l) { var m = l.match(TASK_RE); return m && !/x|☑/i.test(m[2]) && m[4].trim(); });
+            lines = lines.filter(function (l) { return !/\[그림 자리\]/.test(l); });
+            var t = lines.join('\n').replace(/```\w*\s*```/g, '').trim();
+            if (!t) return;
+            if (!map[sx.h]) { map[sx.h] = []; order.push(sx.h); }
+            map[sx.h].push('**' + w.n + '주차' + (w.title ? ' · ' + w.title : '') + '**\n\n' + t);
           });
         });
+        if (!order.length) return '';
+        var tpl = sections(c.noteTpl).map(function (x) { return x.h; });
+        order.sort(function (x, y) { var i = tpl.indexOf(x), j = tpl.indexOf(y); return (i < 0 ? 999 : i) - (j < 0 ? 999 : j); });
+        return order.map(function (h) { return '## ' + h + '\n\n' + map[h].join('\n\n'); }).join('\n\n') + '\n';
+      }
+      function ovPrompt(c) {
+        var weeks = c.weeks.slice().sort(function (a, b) { return a.n - b.n; }).filter(function (w) { return w.note || w.summary; });
+        return '나는 보건대학원에서 역학을 공부하는 대학원생이야. 아래는 "' + c.name + '" 수업의 주차별 내 노트와 수업 요약이야. 이걸로 시험 대비 총정리를 만들어 줘.\n\n' +
+          '출력은 아래 두 부분으로 나누고, 두 제목을 정확히 이대로 써 줘.\n\n' +
+          '# 총정리\n- 주차 순서가 아니라 주제별로 다시 묶어서 "## 주제" 제목으로 정리해 줘.\n' +
+          '- 개념마다 "예시:"로 시작하는 짧은 예시를 하나 이상 붙여 줘. 내 노트에 예시가 있으면 그걸 쓰고, 없으면 보건·역학 맥락으로 새로 만들되 [만든 예시]라고 표시해 줘.\n' +
+          '- 아직 체크하지 않은 "헷갈린 것"은 마지막에 "## 남은 질문" 아래 "- [ ] 질문" 체크 목록으로 모아 줘.\n\n' +
+          '# 개념 묶음\n- 서로 관련된 개념끼리 묶음을 만들고, 묶음마다 "### 묶음 이름"으로 시작해 줘.\n' +
+          '- 묶음마다 포함 개념, 개념 사이 관계 한두 줄, 관련 주차를 적어 줘.\n\n' +
+          '규칙\n- 노트와 요약에 없는 사실은 지어내지 말고, 확실하지 않으면 [불확실]로 표시해 줘.\n- 괄호 안 영어 병기는 쓰지 말아 줘.\n- 한국어 마크다운으로 써 줘.\n\n' +
+          weeks.map(function (w) {
+            return '=== ' + w.n + '주차' + (w.title ? ' ' + w.title : '') + ' ===\n' + (w.note ? '[내 노트]\n' + noImg(w.note).trim() + '\n' : '') + (w.summary ? '[수업 요약]\n' + noImg(w.summary).trim() + '\n' : '');
+          }).join('\n');
+      }
+      function ovHtml(c) {
+        var sv = sub('ov', 'all'), o = c.overview;
+        var head = '<div class="sm-whead"><span class="sm-wtitle">' + esc(c.name) + ' 총정리</span>' + (o.updated ? '<span class="sm-hint">' + o.updated + ' 저장</span>' : '') + '</div>' +
+          '<div class="sm-ovtools"><div class="ed-row"><button type="button" class="sm-collect">자동 모으기</button><button type="button" class="sm-polish sm-primary">Claude로 다듬기</button><button type="button" class="sm-copy-ov">질문 복사만</button></div>' +
+          '<p class="sm-hint">자동 모으기: 주차별 노트를 칸별로 모아요 (체크 안 한 "헷갈린 것"만). Claude로 다듬기: 주제별 정리, 예시, 개념 묶음을 받아요.</p>' +
+          '<p class="sm-status sm-ov-st"></p>' +
+          '<details class="sm-sum-ed"><summary>Claude 결과 붙여넣기</summary><p class="sm-hint">"# 개념 묶음" 제목 앞은 총정리로, 뒤는 개념 묶음으로 나눠서 저장해요</p>' +
+            '<textarea class="sm-ov-in" rows="10" placeholder="claude.ai가 준 결과를 그대로 붙여 넣으세요"></textarea><button type="button" class="sm-ov-save sm-primary">나눠서 저장</button></details></div>' +
+          tabs('ov', [['all', '총정리'], ['concept', '개념 묶음']], sv);
+        var field = sv === 'concept' ? 'concepts' : 'text';
+        if (editing === 'ov') return head + editorHtml(o[field]);
+        if (!o[field]) return head + '<p class="pv-empty">' + (sv === 'concept' ? '"Claude로 다듬기" 결과를 붙여 넣으면 개념 묶음이 여기 따로 보여요. 직접 써도 돼요.' : '"자동 모으기"를 누르거나 직접 써 보세요.') + '</p><div class="ed-row"><button type="button" class="sm-ov-edit">직접 쓰기</button></div>';
+        return head + '<div class="ed-row"><button type="button" class="sm-ov-edit">고치기</button></div><div class="sm-summary ' + (sv === 'concept' ? 'sm-concepts' : 'sm-ov-view') + '"></div>';
+      }
+      function splitResult(t) {
+        t = t.replace(/\r/g, '');
+        var m = t.match(/^#\s*개념\s*묶음\s*$/m), a = m ? t.slice(0, m.index) : t, b = m ? t.slice(m.index + m[0].length) : '';
+        a = a.replace(/^\s*#\s*총정리\s*\n/, '');
+        return { text: a.trim() ? a.trim() + '\n' : '', concepts: b.trim() ? b.trim() + '\n' : '' };
+      }
+      function conceptCards(root, src) {
+        var parts = ('\n' + src).split(/\n(?=###\s)/), intro = parts.shift();
+        root.innerHTML = (intro.trim() ? '<div class="sm-cc-intro">' + md(intro) + '</div>' : '') + '<div class="sm-cards">' + parts.map(function (p) {
+          var nl = p.indexOf('\n'), title = (nl < 0 ? p : p.slice(0, nl)).replace(/^###\s+/, ''), rest = nl < 0 ? '' : p.slice(nl + 1);
+          return '<div class="sm-card"><h3>' + inline(title) + '</h3>' + md(rest) + '</div>';
+        }).join('') + '</div>';
+        hydrate(root);
+      }
+      function bindOv(c) {
+        var $ = function (q) { return host.querySelector(q); }, o = c.overview, st = $('.sm-ov-st'), sv = sub('ov', 'all'), field = sv === 'concept' ? 'concepts' : 'text';
+        bindTabs('ov');
+        $('.sm-collect').addEventListener('click', function () {
+          var g = gather(c);
+          if (!g) { st.textContent = '모을 노트가 아직 없어요. 주차별 "내 노트"를 먼저 써 주세요.'; return; }
+          if (o.text && !confirm('지금 총정리를 자동으로 모은 내용으로 바꿀까요? 직접 고친 내용은 사라져요.')) return;
+          o.text = g; o.updated = new Date().toISOString().slice(0, 10); setSub('ov', 'all'); editing = null; save(); draw();
+        });
+        function hasAny() { if (c.weeks.some(function (w) { return w.note || w.summary; })) return true; st.textContent = '보낼 노트나 요약이 아직 없어요.'; return false; }
+        $('.sm-polish').addEventListener('click', function () { if (hasAny()) openClaude(ovPrompt(c), st, 'claude.ai 새 대화를 열었어요. 보내기를 누르고, 결과를 아래 "Claude 결과 붙여넣기"에 넣어 주세요.'); });
+        $('.sm-copy-ov').addEventListener('click', function () { if (hasAny()) copyOnly(ovPrompt(c), st); });
+        $('.sm-ov-save').addEventListener('click', function () {
+          var r = splitResult($('.sm-ov-in').value);
+          if (!r.text && !r.concepts) return;
+          if ((o.text || o.concepts) && !confirm('지금 총정리와 개념 묶음을 붙여 넣은 내용으로 바꿀까요?')) return;
+          if (r.text) o.text = r.text; if (r.concepts) o.concepts = r.concepts;
+          o.updated = new Date().toISOString().slice(0, 10); editing = null; save(); draw();
+        });
+        if (editing === 'ov') return bindEditor(host, function (t) { o[field] = t.trim() ? t : ''; o.updated = new Date().toISOString().slice(0, 10); });
+        $('.sm-ov-edit').addEventListener('click', function () { editing = 'ov'; draw(); });
+        if (!o[field]) return;
+        if (sv === 'concept') conceptCards($('.sm-concepts'), o.concepts);
+        else showMd($('.sm-ov-view'), o.text, function () { return o.text; }, function (t) { o.text = t; });
       }
       draw();
     }
@@ -1380,8 +1639,12 @@
           try {
             var o = JSON.parse(t);
             if (o && Array.isArray(o.courses)) return o.courses.map(function (c) {
-              return '## ' + c.name + '\n' + c.weeks.slice().sort(function (a, b) { return a.n - b.n; }).map(function (w) { return '### ' + w.n + '주차' + (w.title ? ' ' + w.title : '') + '\n' + (w.summary || '(요약 없음)'); }).join('\n\n');
-            }).join('\n\n');
+              var ov = c.overview || {};
+              return '## ' + c.name + '\n' + (ov.text ? '### 총정리\n' + ov.text + '\n\n' : '') + (ov.concepts ? '### 개념 묶음\n' + ov.concepts + '\n\n' : '') +
+                c.weeks.slice().sort(function (a, b) { return a.n - b.n; }).map(function (w) {
+                  return '### ' + w.n + '주차' + (w.title ? ' ' + w.title : '') + '\n[수업 요약]\n' + (w.summary || '(없음)') + (w.note ? '\n[내 노트]\n' + w.note : '');
+                }).join('\n\n');
+            }).join('\n\n').replace(/!\[[^\]]*\]\(img:[\w-]+\)/g, '[사진]');
             if (o && Array.isArray(o.events)) return o.events.slice().sort(function (a, b) { return (a.date + (a.time || '')).localeCompare(b.date + (b.time || '')); })
               .map(function (e) { return '- ' + e.date + ' ' + (e.time || '') + ' [' + (e.kind === 'todo' ? '할 일' : '일정') + '] ' + e.title + (e.done ? ' (완료)' : ''); }).join('\n');
           } catch (e) {}
