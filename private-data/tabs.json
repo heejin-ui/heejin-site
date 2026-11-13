@@ -40,5 +40,10 @@
     "key": "pmwdu3ed8",
     "name": "할 일",
     "type": "todo"
+  },
+  {
+    "key": "pmwehwz0d",
+    "name": "3학기",
+    "type": "semester"
   }
 ]
