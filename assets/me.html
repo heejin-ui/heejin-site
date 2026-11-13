@@ -496,13 +496,30 @@
     }).join('\n');
   }
 
+
+  var SEM_BASE = ['한 줄 요약', '핵심 개념', '교수님 강조·시험 포인트', '내 논문과 연결', '모르는 것·질문할 것'];
+  var SEM_COURSES = [
+    ['llm', 'LLM', ['써 볼 도구·프롬프트']],
+    ['data', '역학 연구의 자료분석', ['분석 절차·쓰는 통계 방법']],
+    ['method', '역학연구방법론', ['연구 설계·편향 점검']],
+    ['r', 'R', ['오늘 쓴 코드']]
+  ];
+  function semesterData(text) {
+    var o = null; try { o = JSON.parse(text || ''); } catch (e) {}
+    if (!o || !Array.isArray(o.courses)) o = { courses: [] };
+    if (!o.courses.length) o.courses = SEM_COURSES.map(function (c) { return { id: c[0], name: c[1], sections: SEM_BASE.slice(0, 2).concat(c[2], SEM_BASE.slice(2)), weeks: [] }; });
+    o.courses.forEach(function (c) { if (!Array.isArray(c.weeks)) c.weeks = []; if (!Array.isArray(c.sections) || !c.sections.length) c.sections = SEM_BASE.slice(); });
+    return o;
+  }
+
   function privateInit(el, pkey, label, box) {
     var keyFile = null, key = null, body = '', btnAdded = false;
-    var tabInfo = {}, ttype = 'doc', planner = false, storeKey = pkey;
+    var tabInfo = {}, ttype = 'doc', planner = false, semester = false, storeKey = pkey;
     function setType(list) {
       tabInfo = list.filter(function (t) { return t.key === pkey; })[0] || {};
       ttype = tabInfo.type || 'doc';
       planner = ttype === 'todo' || ttype === 'calendar';
+      semester = ttype === 'semester';
       storeKey = planner ? 'planner' : pkey;
       var h1 = document.querySelector('h1.title');
       if (tabInfo.name && h1) { h1.textContent = tabInfo.name; document.title = tabInfo.name; label = tabInfo.name; }
@@ -638,6 +655,7 @@
       el.innerHTML = '';
       saveEl = document.createElement('p'); saveEl.className = 'pv-save'; el.appendChild(saveEl);
       if (planner) { var pBox = document.createElement('div'); el.appendChild(pBox); renderPlanner(pBox, ttype); }
+      else if (semester) { var sBox = document.createElement('div'); el.appendChild(sBox); renderSemester(sBox); }
       else {
         if (body.trim()) { var wrapB = document.createElement('div'); el.appendChild(wrapB); renderRich(prepTasks(body), wrapB, 'hj-sub-' + pkey); bindTasks(wrapB); }
         else el.insertAdjacentHTML('beforeend', '<p class="pv-empty">아직 내용이 없어요. 오른쪽 아래 "이 페이지 수정"을 눌러 써 보세요.</p>');
@@ -761,13 +779,148 @@
       (mode === 'calendar' ? drawCal : drawTodo)();
     }
 
+
+    function renderSemester(host) {
+      var data = semesterData(body);
+      function save() { body = JSON.stringify(data, null, 1); scheduleSave(); }
+      var ss = function (k, v) { try { if (v === undefined) return sessionStorage.getItem(k); sessionStorage.setItem(k, v); } catch (e) {} };
+      var ci = Math.min(+(ss('hj-sem-c-' + pkey) || 0), data.courses.length - 1);
+      var transcript = '', fileName = '';
+      function course() { return data.courses[ci]; }
+      function curWeek() { var c = course(), n = +(ss('hj-sem-w-' + pkey + '-' + c.id) || 0); return c.weeks.filter(function (w) { return w.n === n; })[0] || c.weeks[c.weeks.length - 1] || null; }
+      function setWeek(w) { ss('hj-sem-w-' + pkey + '-' + course().id, String(w ? w.n : 0)); }
+
+      function scrub(t) {
+        var names = (host.querySelector('.sm-names') || {}).value || '';
+        names.split(/[,\n]/).map(function (x) { return x.trim(); }).filter(Boolean).forEach(function (nm) { t = t.split(nm).join('[이름]'); });
+        return t;
+      }
+      function prompt(c, w, text) {
+        return '나는 보건대학원에서 역학을 공부하는 대학원생이야. 아래는 "' + c.name + '" 수업 ' + w.n + '주차' + (w.title ? ' (' + w.title + ')' : '') + ' 녹음 전사문이야.' +
+          ' 강의자료를 첨부했다면 함께 참고해 줘.\n\n' +
+          '아래 틀에 맞춰 한국어 마크다운으로 정리해 줘. 각 칸은 "## 칸 이름" 제목으로 시작해 줘.\n' +
+          c.sections.map(function (x, i) { return (i + 1) + '. ' + x; }).join('\n') + '\n\n' +
+          '규칙\n- 전사문과 강의자료에 실제로 있는 내용만 쓰고, 확실하지 않으면 [불확실]로 표시해 줘.\n- 강의자료에서 온 내용은 슬라이드 쪽수를 적어 줘.\n- 괄호 안 영어 병기는 쓰지 말아 줘.\n' +
+          '- "내 논문과 연결" 칸은 내가 준비 중인 두 논문, 정신건강 멘델 무작위 분석과 자가면역질환 연구에 쓸 수 있는 점만 짧게 적어 줘.\n' +
+          '- "모르는 것·질문할 것" 칸은 "- [ ] 질문" 형식의 체크 목록으로 써 줘.\n' +
+          '- 수업 중 다른 학생의 이름이나 개인 이야기는 요약에 넣지 말아 줘.\n\n' +
+          '[전사문]\n' + (text || '(전사문 없음. 첨부한 강의자료만 보고 정리해 줘.)');
+      }
+
+      function draw() {
+        var c = course(), w = curWeek();
+        host.innerHTML =
+          '<div class="sm-courses">' + data.courses.map(function (x, i) { return '<button type="button" class="sm-course' + (i === ci ? ' on' : '') + '" data-i="' + i + '">' + esc(x.name) + '</button>'; }).join('') + '</div>' +
+          '<div class="sm-body"><aside class="sm-weeks"><div class="sm-cap">주차</div>' +
+            c.weeks.slice().sort(function (a, b) { return a.n - b.n; }).map(function (x) {
+              return '<button type="button" class="sm-week' + (w && x.n === w.n ? ' on' : '') + '" data-n="' + x.n + '"><span>' + x.n + '주차</span>' + (x.summary ? '<span class="sm-ok">✓</span>' : '') + '</button>';
+            }).join('') +
+            '<div class="sm-addw"><input type="number" min="1" max="30" class="sm-wn" value="' + (c.weeks.reduce(function (m, x) { return Math.max(m, x.n); }, 0) + 1) + '"><button type="button" class="sm-wadd">주차 추가</button></div>' +
+            '<details class="sm-tpl"><summary>요약 틀 고치기</summary><p class="sm-hint">한 줄에 칸 하나씩</p><textarea class="sm-tpl-in" rows="8">' + esc(c.sections.join('\n')) + '</textarea><button type="button" class="sm-tpl-save">틀 저장</button></details>' +
+          '</aside><section class="sm-main">' + (w ? weekHtml(c, w) : '<p class="pv-empty">왼쪽에서 주차를 추가해 주세요.</p>') + '</section></div>';
+        host.querySelectorAll('.sm-course').forEach(function (b) { b.addEventListener('click', function () { ci = +b.getAttribute('data-i'); ss('hj-sem-c-' + pkey, String(ci)); transcript = ''; fileName = ''; draw(); }); });
+        host.querySelectorAll('.sm-week').forEach(function (b) { b.addEventListener('click', function () { setWeek({ n: +b.getAttribute('data-n') }); transcript = ''; fileName = ''; draw(); }); });
+        host.querySelector('.sm-wadd').addEventListener('click', function () {
+          var n = parseInt(host.querySelector('.sm-wn').value, 10);
+          if (!(n > 0)) return;
+          if (!c.weeks.some(function (x) { return x.n === n; })) { c.weeks.push({ n: n, title: '', summary: '' }); save(); }
+          setWeek({ n: n }); transcript = ''; fileName = ''; draw();
+        });
+        host.querySelector('.sm-tpl-save').addEventListener('click', function () {
+          var v = host.querySelector('.sm-tpl-in').value.split('\n').map(function (x) { return x.trim(); }).filter(Boolean);
+          if (!v.length) return; c.sections = v; save(); draw();
+        });
+        if (w) bindWeek(c, w);
+      }
+
+      function weekHtml(c, w) {
+        return '<div class="sm-whead"><span class="sm-wtitle">' + w.n + '주차</span><input class="sm-title" placeholder="이번 주 주제 (선택)" value="' + esc(w.title || '').replace(/"/g, '&quot;') + '">' +
+            '<button type="button" class="sm-wdel" title="이 주차 지우기">×</button></div>' +
+          '<div class="sm-steps">' +
+          '<div class="sm-step"><b>1</b> 녹음 전사문 올리기 <span class="sm-hint">저장되지 않고 이 화면에서만 쓰여요</span></div>' +
+          '<div class="sm-drop' + (transcript ? ' has' : '') + '"><input type="file" class="sm-file" accept=".txt,.md,.vtt,.srt" hidden>' +
+            (transcript ? '<span>' + esc(fileName || '붙여 넣은 글') + ' · ' + transcript.length.toLocaleString() + '자</span> <button type="button" class="sm-clear">비우기</button>'
+              : '<span>전사문 파일을 끌어다 놓거나 <a href="#" class="sm-pick">골라 주세요</a> (txt, md, vtt, srt)</span>') + '</div>' +
+          '<details class="sm-paste"><summary>파일 대신 글로 붙여 넣기</summary><textarea class="sm-paste-in" rows="5" placeholder="전사문을 붙여 넣으세요"></textarea><button type="button" class="sm-paste-ok">이 글 쓰기</button></details>' +
+          '<label class="sm-names-l">요약 전에 지울 이름 <input class="sm-names" placeholder="쉼표로 구분 — 다른 학생 이름"></label>' +
+          '<div class="sm-step"><b>2</b> claude.ai에서 요약 받기 <span class="sm-hint">강의자료 PDF는 열린 창에 직접 첨부해 주세요</span></div>' +
+          '<div class="ed-row"><button type="button" class="sm-go">요약 만들기</button><button type="button" class="sm-copy">질문 복사만</button></div>' +
+          '<p class="sm-status"></p>' +
+          '<div class="sm-step"><b>3</b> 받은 요약 붙여 넣고 저장</div>' +
+          '<details class="sm-sum-ed"' + (w.summary ? '' : ' open') + '><summary>' + (w.summary ? '요약 고치기' : '요약 붙여넣기') + '</summary>' +
+            '<textarea class="sm-sum-in" rows="10" placeholder="claude.ai가 준 요약을 그대로 붙여 넣으세요">' + esc(w.summary || '') + '</textarea>' +
+            '<button type="button" class="sm-sum-save">요약 저장</button></details></div>' +
+          '<div class="sm-summary"></div>';
+      }
+
+      function bindWeek(c, w) {
+        var $ = function (q) { return host.querySelector(q); }, status = $('.sm-status');
+        if (w.summary) { var wrap = $('.sm-summary'); var prepared = prepSemTasks(w.summary); wrap.innerHTML = md(prepared); bindSemTasks(wrap, w); }
+        $('.sm-title').addEventListener('change', function () { w.title = this.value.trim(); save(); });
+        $('.sm-wdel').addEventListener('click', function () {
+          if (!confirm(w.n + '주차를 지울까요? 저장된 요약도 함께 지워져요.')) return;
+          c.weeks = c.weeks.filter(function (x) { return x !== w; }); setWeek(null); save(); draw();
+        });
+        function take(name, text) { fileName = name; transcript = text.replace(/\r/g, ''); draw(); }
+        function readFile(f) {
+          if (!f) return;
+          if (!/\.(txt|md|vtt|srt)$/i.test(f.name)) { status.textContent = '전사문은 txt, md, vtt, srt 파일만 받아요. PDF는 claude.ai 창에 직접 첨부해 주세요.'; return; }
+          f.text().then(function (t) { take(f.name, t); });
+        }
+        var drop = $('.sm-drop'), file = $('.sm-file');
+        var pick = $('.sm-pick'); if (pick) pick.addEventListener('click', function (e) { e.preventDefault(); file.click(); });
+        file.addEventListener('change', function () { readFile(file.files[0]); });
+        ['dragenter', 'dragover'].forEach(function (ev) { drop.addEventListener(ev, function (e) { e.preventDefault(); drop.classList.add('over'); }); });
+        ['dragleave', 'drop'].forEach(function (ev) { drop.addEventListener(ev, function (e) { e.preventDefault(); drop.classList.remove('over'); }); });
+        drop.addEventListener('drop', function (e) { readFile(e.dataTransfer.files[0]); });
+        var clr = $('.sm-clear'); if (clr) clr.addEventListener('click', function () { transcript = ''; fileName = ''; draw(); });
+        $('.sm-paste-ok').addEventListener('click', function () { var v = $('.sm-paste-in').value; if (v.trim()) take('붙여 넣은 글', v); });
+        function text() { return prompt(c, w, scrub(transcript)); }
+        $('.sm-go').addEventListener('click', function () {
+          var t = text();
+          if (t.length <= Q_LIMIT) {
+            window.open('https://claude.ai/new?q=' + encodeURIComponent(t), '_blank', 'noopener');
+            status.textContent = 'claude.ai 새 대화를 열었어요. 강의자료가 있으면 첨부하고 보내기를 눌러 주세요.';
+          } else {
+            var cp = navigator.clipboard.writeText(t);
+            window.open('https://claude.ai/new', '_blank', 'noopener');
+            cp.then(function () {
+              status.textContent = '전사문이 길어서(' + t.length.toLocaleString() + '자) 질문 전체를 복사했어요. 열린 claude.ai 창에 붙여 넣어 주세요.';
+            }, function () { status.textContent = '복사하지 못했어요. "질문 복사만"을 다시 눌러 주세요.'; });
+          }
+        });
+        $('.sm-copy').addEventListener('click', function () {
+          navigator.clipboard.writeText(text()).then(function () { status.textContent = '질문을 복사했어요.'; }, function () { status.textContent = '복사하지 못했어요.'; });
+        });
+        $('.sm-sum-save').addEventListener('click', function () {
+          w.summary = $('.sm-sum-in').value.replace(/\r/g, '').trim(); w.updated = new Date().toISOString().slice(0, 10);
+          save(); draw();
+        });
+      }
+      function prepSemTasks(src) {
+        return src.split('\n').map(function (l, i) { var m = l.match(TASK_RE); return m ? m[1] + '\u0000T' + i + (/x|☑/i.test(m[2]) ? 1 : 0) + '\u0000 ' + m[4] : l; }).join('\n');
+      }
+      function bindSemTasks(root, w) {
+        root.querySelectorAll('.task-cb').forEach(function (cb) {
+          var li = cb.closest('li'); if (li) { li.classList.add('task'); li.classList.toggle('task-done', cb.checked); }
+          cb.addEventListener('change', function () {
+            var k = +cb.getAttribute('data-line'), lines = w.summary.split('\n'), m = lines[k] && lines[k].match(TASK_RE);
+            if (!m) return;
+            lines[k] = m[1] + (cb.checked ? '[x]' : '[ ]') + m[3] + m[4]; w.summary = lines.join('\n');
+            if (li) li.classList.toggle('task-done', cb.checked); save();
+          });
+        });
+      }
+      draw();
+    }
+
     function showContent() {
       msg('<p>불러오는 중…</p>');
       return ghGet(PDIR + storeKey + '.enc').then(function (f) {
         return f ? decText(key, JSON.parse(f.text)) : '';
       }).then(function (t) {
         body = t; render();
-        if (btnAdded || planner) return;
+        if (btnAdded || planner || semester) return;
         btnAdded = true;
         var ed = document.createElement('a');
         ed.className = 'me-btn me-edit'; ed.href = '#'; ed.textContent = '이 페이지 수정';
@@ -883,7 +1036,7 @@
             '<section><h3>공개 탭</h3><p class="ed-tip">누구나 보는 메뉴예요. 적용하고 2~3분 뒤 반영돼요.</p><div class="tb-list" data-kind="pub"></div>' +
               '<div class="tb-add"><input class="tb-new" data-kind="pub" placeholder="새 탭 이름"><button type="button" class="tb-add-btn" data-kind="pub">추가</button></div></section>' +
             '<section><h3>비공개 탭</h3><p class="ed-tip">나만 보는 메뉴예요. 적용하면 바로 바뀌어요.</p><div class="tb-list" data-kind="priv"></div>' +
-              '<div class="tb-add"><input class="tb-new" data-kind="priv" placeholder="새 탭 이름"><select class="tb-type"><option value="">글</option><option value="todo">할 일</option><option value="calendar">달력</option></select><button type="button" class="tb-add-btn" data-kind="priv">추가</button></div></section>' +
+              '<div class="tb-add"><input class="tb-new" data-kind="priv" placeholder="새 탭 이름"><select class="tb-type"><option value="">글</option><option value="todo">할 일</option><option value="calendar">달력</option><option value="semester">학기 공부</option></select><button type="button" class="tb-add-btn" data-kind="priv">추가</button></div></section>' +
           '</div>' +
           '<p class="ed-tip">삭제는 메뉴에서만 빼요. 써 둔 글은 저장소에 남아 있어요. 비공개 탭 이름은 암호화되지 않아요.</p>' +
           '<div class="ed-foot"><span class="ed-status"></span><button class="ed-apply" type="button">적용</button></div>' +
@@ -910,7 +1063,7 @@
       arr.forEach(function (t, i) {
         var home = kind === 'pub' && t.href === 'index.qmd';
         var row = document.createElement('div'); row.className = 'tb-row';
-        row.innerHTML = '<input class="tb-name">' + (kind === 'priv' && t.type ? '<span class="tb-badge">' + (t.type === 'todo' ? '할 일' : '달력') + '</span>' : '') +
+        row.innerHTML = '<input class="tb-name">' + (kind === 'priv' && t.type ? '<span class="tb-badge">' + ({ todo: '할 일', calendar: '달력', semester: '학기 공부' }[t.type] || t.type) + '</span>' : '') +
           '<button type="button" class="tb-up" title="위로"' + (i === 0 ? ' disabled' : '') + '>↑</button>' +
           '<button type="button" class="tb-down" title="아래로"' + (i === arr.length - 1 ? ' disabled' : '') + '>↓</button>' +
           '<button type="button" class="tb-del"' + (home ? ' disabled title="첫 화면은 지울 수 없어요"' : '') + '>삭제</button>';
@@ -1226,6 +1379,9 @@
         return ghGet(PDIR + key + '.enc').then(function (f) { return f ? decText(k, JSON.parse(f.text)) : ''; }).then(function (t) {
           try {
             var o = JSON.parse(t);
+            if (o && Array.isArray(o.courses)) return o.courses.map(function (c) {
+              return '## ' + c.name + '\n' + c.weeks.slice().sort(function (a, b) { return a.n - b.n; }).map(function (w) { return '### ' + w.n + '주차' + (w.title ? ' ' + w.title : '') + '\n' + (w.summary || '(요약 없음)'); }).join('\n\n');
+            }).join('\n\n');
             if (o && Array.isArray(o.events)) return o.events.slice().sort(function (a, b) { return (a.date + (a.time || '')).localeCompare(b.date + (b.time || '')); })
               .map(function (e) { return '- ' + e.date + ' ' + (e.time || '') + ' [' + (e.kind === 'todo' ? '할 일' : '일정') + '] ' + e.title + (e.done ? ' (완료)' : ''); }).join('\n');
           } catch (e) {}
