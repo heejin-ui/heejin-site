@@ -1,0 +1,13 @@
+{
+  "name": "Heejin",
+  "short_name": "Heejin",
+  "start_url": "/heejin-site/?me=on",
+  "scope": "/heejin-site/",
+  "display": "standalone",
+  "background_color": "#FDF4F7",
+  "theme_color": "#C2557E",
+  "icons": [
+    { "src": "/heejin-site/icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/heejin-site/icons/icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}
