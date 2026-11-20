@@ -824,3 +824,7 @@ li.pl-item.task-done .pl-g, li.pl-item.task-done .pl-del, li.pl-item.task-done .
 #private-content .sm-card p, #private-content .sm-card li { font-size: .95rem; }
 #private-content .sm-card table { display: block; overflow-x: auto; max-width: 100%; font-size: .88rem; margin: 6px 0 12px; }
 #private-content .sm-card a { word-break: keep-all; }
+/* 긴 인라인 코드가 카드 밖으로 나가지 않게 줄바꿈 */
+#private-content :not(pre) > code { white-space: normal; overflow-wrap: anywhere; word-break: break-all; }
+#private-content .sm-card, #private-content .sm-ov-view, #private-content .sm-sum-view { overflow-wrap: anywhere; min-width: 0; }
+#private-content .sm-card pre, #private-content .sm-ov-view pre { overflow-x: auto; max-width: 100%; }
