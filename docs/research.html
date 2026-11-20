@@ -42,7 +42,7 @@ ul.task-list li input[type="checkbox"] {
 <link href="site_libs/quarto-html/quarto-syntax-highlighting-63b5708e65d6cd79cd7618c58d0c21e7.css" rel="stylesheet" id="quarto-text-highlighting-styles">
 <script src="site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="site_libs/bootstrap/bootstrap-cb61c712ca1a7fe70a83faed8e4da2d7.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<link href="site_libs/bootstrap/bootstrap-8d3ad9c781c51ccd60b292c95058b2c2.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
 <script id="quarto-search-options" type="application/json">{
   "language": {
     "search-no-results-text": "No results",
@@ -1278,13 +1278,25 @@ ul.task-list li input[type="checkbox"] {
         order.sort(function (x, y) { var i = tpl.indexOf(x), j = tpl.indexOf(y); return (i < 0 ? 999 : i) - (j < 0 ? 999 : j); });
         return order.map(function (h) { return '## ' + h + '\n\n' + map[h].join('\n\n'); }).join('\n\n') + '\n';
       }
+      /* R 과목이거나 노트에 R 코드가 있으면 총정리에 "코드 정리" 칸을 넣어요 */
+      function hasCode(c, weeks) {
+        return c.id === 'r' || weeks.some(function (w) { return /```\s*r\b/i.test((w.note || '') + (w.summary || '')); });
+      }
       function ovPrompt(c) {
         var weeks = c.weeks.slice().sort(function (a, b) { return a.n - b.n; }).filter(function (w) { return w.note || w.summary; });
         return '나는 보건대학원에서 역학을 공부하는 대학원생이야. 아래는 "' + c.name + '" 수업의 주차별 내 노트와 수업 요약이야. 이걸로 시험 대비 총정리를 만들어 줘.\n\n' +
           '출력은 아래 두 부분으로 나누고, 두 제목을 정확히 이대로 써 줘.\n\n' +
           '# 총정리\n- 주차 순서가 아니라 주제별로 다시 묶어서 "## 주제" 제목으로 정리해 줘.\n' +
           '- 개념마다 "예시:"로 시작하는 짧은 예시를 하나 이상 붙여 줘. 내 노트에 예시가 있으면 그걸 쓰고, 없으면 보건·역학 맥락으로 새로 만들되 [만든 예시]라고 표시해 줘.\n' +
-          '- 아직 체크하지 않은 "헷갈린 것"은 마지막에 "## 남은 질문" 아래 "- [ ] 질문" 체크 목록으로 모아 줘.\n\n' +
+          '- 아직 체크하지 않은 "헷갈린 것"은 마지막에 "## 남은 질문" 아래 "- [ ] 질문" 체크 목록으로 모아 줘.\n' +
+          (hasCode(c, weeks) ? '- "## 남은 질문" 바로 앞에 "## 코드 정리"를 만들어 줘. 노트와 요약에 나온 R 코드를 분석 종류별로 묶고, 코드마다 아래 형식으로 써 줘.\n' +
+            '  - "### 분석 이름" 제목 (예: 로지스틱 회귀, 생존분석)\n' +
+            '  - 코드 블록: 노트에 나온 코드를 그대로 옮기기\n' +
+            '  - **어떤 분석에 쓰나**: 어떤 연구 질문과 자료(결과변수 종류, 설계)에 쓰는지\n' +
+            '  - **코드 읽기**: 함수와 인자가 각각 무엇을 뜻하는지 한 줄씩\n' +
+            '  - **결과 읽기**: 출력에서 봐야 할 값(계수, 신뢰구간, p값 등)과 해석 방법\n' +
+            '  - **주의할 점**: 가정, 흔한 실수\n' +
+            '  - 노트에 없는 코드는 새로 만들지 말고, 내 노트에 없는 설명을 보탤 때는 [보충]이라고 표시해 줘.\n' : '') + '\n' +
           '# 개념 묶음\n- 서로 관련된 개념끼리 묶음을 만들고, 묶음마다 "### 묶음 이름"으로 시작해 줘.\n' +
           '- 묶음마다 포함 개념, 개념 사이 관계 한두 줄, 관련 주차를 적어 줘.\n\n' +
           '규칙\n- 노트와 요약에 없는 사실은 지어내지 말고, 확실하지 않으면 [불확실]로 표시해 줘.\n- 괄호 안 영어 병기는 쓰지 말아 줘.\n- 한국어 마크다운으로 써 줘.\n\n' +
