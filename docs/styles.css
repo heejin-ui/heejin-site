@@ -818,3 +818,9 @@ li.pl-item.task-done .pl-g, li.pl-item.task-done .pl-del, li.pl-item.task-done .
 #private-content .sm-fadd > summary { display:inline-block; padding:3px 10px; line-height:1.4; }
 #private-content .sm-ok.sm-slides { background:transparent; border:1px dashed var(--site-accent); color:var(--site-accent); }
 #private-content .sm-src-note { margin:4px 0 10px; padding:8px 12px; border-left:3px solid var(--site-accent); background:var(--site-soft); font-size:.88rem; }
+/* 개념 묶음: 자세한 카드는 한 줄에 하나씩, 표는 가로 스크롤 */
+#private-content .sm-cards { grid-template-columns: minmax(0, 1fr); gap: 16px; }
+#private-content .sm-card { padding: 16px 20px; }
+#private-content .sm-card p, #private-content .sm-card li { font-size: .95rem; }
+#private-content .sm-card table { display: block; overflow-x: auto; max-width: 100%; font-size: .88rem; margin: 6px 0 12px; }
+#private-content .sm-card a { word-break: keep-all; }
